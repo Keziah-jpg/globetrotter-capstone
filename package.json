@@ -4,9 +4,11 @@
   "description": "Nyom Health Services Locator API",
   "main": "src/server.js",
   "scripts": {
+    "start": "node src/server.js",
     "test": "jest"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "express": "^4.19.2"
   },
   "devDependencies": {

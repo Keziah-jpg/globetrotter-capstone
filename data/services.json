@@ -1,0 +1,150 @@
+[
+  {
+    "id": 1,
+    "name": "Nyom District Hospital",
+    "type": "hospital",
+    "address": "Nyom Main Road",
+    "lat": 3.873,
+    "lng": 11.468,
+    "contact": "+237600000001",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Emergency",
+      "Maternity",
+      "Surgery",
+      "Pharmacy",
+      "Laboratory"
+    ],
+    "rating": 4.4,
+    "popular": true
+  },
+  {
+    "id": 2,
+    "name": "Pharmacie Centrale Nyom",
+    "type": "pharmacy",
+    "address": "Nyom Market",
+    "lat": 3.8695,
+    "lng": 11.4712,
+    "contact": "+237600000002",
+    "hours": {
+      "open": "08:00",
+      "close": "21:00"
+    },
+    "languages": [
+      "French"
+    ],
+    "services": [
+      "Medication",
+      "Consultation",
+      "Vaccination"
+    ],
+    "rating": 4.1,
+    "popular": true
+  },
+  {
+    "id": 3,
+    "name": "Clinique Espoir Nyom",
+    "type": "clinic",
+    "address": "Near Nyom Bus Station",
+    "lat": 3.8752,
+    "lng": 11.4739,
+    "contact": "+237600000003",
+    "hours": {
+      "open": "07:00",
+      "close": "20:00"
+    },
+    "languages": [
+      "French",
+      "English",
+      "Ewondo"
+    ],
+    "services": [
+      "General Consultation",
+      "Pediatrics",
+      "Dental Care",
+      "Laboratory"
+    ],
+    "rating": 4.6,
+    "popular": false
+  },
+  {
+    "id": 4,
+    "name": "Centre de Sante Nyom II",
+    "type": "clinic",
+    "address": "Nyom II Road",
+    "lat": 3.8601,
+    "lng": 11.4658,
+    "contact": "+237600000004",
+    "hours": {
+      "open": "08:00",
+      "close": "18:00"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Consultation",
+      "Vaccination"
+    ],
+    "rating": 3.9,
+    "popular": false
+  },
+  {
+    "id": 5,
+    "name": "Pharmacie du Carrefour Nyom",
+    "type": "pharmacy",
+    "address": "Carrefour Nyom",
+    "lat": 3.8674,
+    "lng": 11.4695,
+    "contact": "+237600000005",
+    "hours": {
+      "open": "07:30",
+      "close": "22:00"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Medication",
+      "First Aid",
+      "Vaccination"
+    ],
+    "rating": 4,
+    "popular": false
+  },
+  {
+    "id": 6,
+    "name": "Polyclinique Nyom Sante Plus",
+    "type": "hospital",
+    "address": "Nyom Rond-Point",
+    "lat": 3.8718,
+    "lng": 11.4726,
+    "contact": "+237600000006",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French",
+      "English",
+      "Ewondo"
+    ],
+    "services": [
+      "Emergency",
+      "Radiology",
+      "Consultation",
+      "Laboratory"
+    ],
+    "rating": 4.3,
+    "popular": true
+  }
+]

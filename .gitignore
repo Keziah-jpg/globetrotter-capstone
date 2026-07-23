@@ -24,11 +24,16 @@ build/
 # Docker
 .dockerignore
 
-# Data files (populated at runtime; keep only .gitkeep)
+# Data files (populated at runtime); seed data (services.json) is tracked
 data/*.json
+!data/services.json
 
 # IDE / editor
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Node
+node_modules/
+npm-debug.log*

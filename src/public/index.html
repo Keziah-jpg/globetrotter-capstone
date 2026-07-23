@@ -2,40 +2,94 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nyom Health Locator</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <header>
-    <h1>Nyom Health Services Locator</h1>
-    <nav>
-      <a href="login.html">Login</a>
-      <a href="services.html">Services</a>
+  <header class="site-header">
+    <a href="index.html" class="brand"><span class="brand-mark"><i class="fa-solid fa-heart-pulse"></i></span>Nyom Health Locator</a>
+    <nav class="site-nav">
+      <a href="index.html" class="active">Home</a>
+      <a href="services.html">Directory</a>
+      <a href="login.html" id="navAuthLink">Login</a>
     </nav>
+    <span id="userChip"><i class="fa-solid fa-circle-user"></i> <span id="userChipName"></span> <button onclick="logoutUser()">Log out</button></span>
   </header>
 
-  <main>
-    <section class="search">
-      <h2>Find Health Services</h2>
+  <section class="hero">
+    <span class="eyebrow">Globetrotter · Health Services</span>
+    <h1>Find trusted care, wherever Nyom takes you</h1>
+    <p>Search hospitals, clinics and pharmacies around Nyom by name, type or language spoken — or let us find what's nearest to you right now.</p>
+  </section>
+
+  <section class="search">
+    <div class="search-panel">
       <input type="text" id="searchName" placeholder="Search by name...">
       <select id="searchType">
-        <option value="">All Types</option>
-        <option value="hospital">Hospital 🏥</option>
-        <option value="clinic">Clinic 🩺</option>
-        <option value="pharmacy">Pharmacy 💊</option>
+        <option value="">All types</option>
+        <option value="hospital">Hospital</option>
+        <option value="clinic">Clinic</option>
+        <option value="pharmacy">Pharmacy</option>
       </select>
       <select id="searchLanguage">
-        <option value="">Any Language</option>
+        <option value="">Any language</option>
         <option value="French">French</option>
         <option value="English">English</option>
         <option value="Ewondo">Ewondo</option>
       </select>
-      <button onclick="searchServices()">Search</button>
-    </section>
+      <button onclick="searchServices()"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+      <button class="secondary" id="nearMeBtn" onclick="useMyLocation()"><i class="fa-solid fa-location-crosshairs"></i> Near me</button>
+    </div>
+    <div class="chip-row" id="typeChips">
+      <span class="chip" data-type="">All</span>
+      <span class="chip" data-type="hospital">Hospitals</span>
+      <span class="chip" data-type="clinic">Clinics</span>
+      <span class="chip" data-type="pharmacy">Pharmacies</span>
+    </div>
+  </section>
 
+  <main>
+    <div class="toolbar">
+      <div class="title-block">
+        <h2 id="resultsTitle">All services</h2>
+        <p id="resultsSubtitle">Showing every registered health service in Nyom</p>
+      </div>
+    </div>
     <section id="results" class="card-grid"></section>
+
+    <div class="toolbar" id="recoToolbar" style="display:none;">
+      <div class="title-block">
+        <h2>Recommended for you</h2>
+        <p>Popular services picked based on community activity</p>
+      </div>
+    </div>
+    <section id="recommendations" class="card-grid"></section>
   </main>
+
+  <footer class="site-footer">
+    Nyom Health Locator &middot; GlobeTrotter capstone project &middot; built with care for travellers and residents alike
+  </footer>
+
+  <div class="modal-backdrop" id="shareModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeShareModal()">&times;</button>
+      <h3>Share this service</h3>
+      <div class="field">
+        <label for="shareEmail">Recipient's email</label>
+        <input type="email" id="shareEmail" placeholder="friend@example.com">
+      </div>
+      <div class="modal-actions">
+        <button class="secondary" onclick="closeShareModal()">Cancel</button>
+        <button onclick="confirmShare()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastStack"></div>
 
   <script src="app.js"></script>
 </body>

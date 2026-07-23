@@ -2,21 +2,100 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Services - Nyom Health Locator</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <header>
-    <h1>Health Services in Nyom</h1>
-    <nav>
+  <header class="site-header">
+    <a href="index.html" class="brand"><span class="brand-mark"><i class="fa-solid fa-heart-pulse"></i></span>Nyom Health Locator</a>
+    <nav class="site-nav">
       <a href="index.html">Home</a>
-      <a href="login.html">Login</a>
+      <a href="services.html" class="active">Directory</a>
+      <a href="login.html" id="navAuthLink">Login</a>
     </nav>
+    <span id="userChip"><i class="fa-solid fa-circle-user"></i> <span id="userChipName"></span> <button onclick="logoutUser()">Log out</button></span>
   </header>
 
+  <section class="hero">
+    <span class="eyebrow">Full directory</span>
+    <h1>Every health service we know about in Nyom</h1>
+    <p>Browse the complete list, sort by what matters to you, or contribute a place you trust.</p>
+  </section>
+
   <main>
+    <div class="toolbar">
+      <div class="title-block">
+        <h2>All services</h2>
+        <p id="countLabel">Loading...</p>
+      </div>
+      <div class="field" style="min-width:180px;">
+        <label for="sortBy">Sort by</label>
+        <select id="sortBy" onchange="loadServices()">
+          <option value="name">Name (A-Z)</option>
+          <option value="rating">Rating (high to low)</option>
+        </select>
+      </div>
+    </div>
+
     <section id="servicesList" class="card-grid"></section>
+
+    <details class="add-service" id="addServicePanel">
+      <summary>Add a health service you know about</summary>
+      <p class="hint" id="addServiceHint" style="margin-top:0.6rem;"></p>
+      <div class="add-service-grid">
+        <div class="field">
+          <label for="newName">Name</label>
+          <input type="text" id="newName" placeholder="Clinique Bonne Sante">
+        </div>
+        <div class="field">
+          <label for="newType">Type</label>
+          <select id="newType">
+            <option value="hospital">Hospital</option>
+            <option value="clinic">Clinic</option>
+            <option value="pharmacy">Pharmacy</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label for="newAddress">Address</label>
+          <input type="text" id="newAddress" placeholder="Street / landmark in Nyom">
+        </div>
+        <div class="field">
+          <label for="newContact">Contact number</label>
+          <input type="text" id="newContact" placeholder="+237 6 00 00 00 00">
+        </div>
+        <div class="field">
+          <label for="newLanguages">Languages (comma separated)</label>
+          <input type="text" id="newLanguages" placeholder="French, English">
+        </div>
+      </div>
+      <button style="margin-top:1rem;" onclick="addService()"><i class="fa-solid fa-plus"></i> Add service</button>
+    </details>
   </main>
+
+  <footer class="site-footer">
+    Nyom Health Locator &middot; GlobeTrotter capstone project
+  </footer>
+
+  <div class="modal-backdrop" id="shareModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeShareModal()">&times;</button>
+      <h3>Share this service</h3>
+      <div class="field">
+        <label for="shareEmail">Recipient's email</label>
+        <input type="email" id="shareEmail" placeholder="friend@example.com">
+      </div>
+      <div class="modal-actions">
+        <button class="secondary" onclick="closeShareModal()">Cancel</button>
+        <button onclick="confirmShare()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastStack"></div>
 
   <script src="app.js"></script>
 </body>
