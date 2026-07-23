@@ -1,0 +1,16 @@
+{
+  "name": "nyom-health-api",
+  "version": "1.0.0",
+  "description": "Nyom Health Services Locator API",
+  "main": "src/server.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  }
+}

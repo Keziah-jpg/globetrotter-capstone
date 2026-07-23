@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nyom Health Locator</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <header>
+    <h1>Nyom Health Services Locator</h1>
+    <nav>
+      <a href="login.html">Login</a>
+      <a href="services.html">Services</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="search">
+      <h2>Find Health Services</h2>
+      <input type="text" id="searchName" placeholder="Search by name...">
+      <select id="searchType">
+        <option value="">All Types</option>
+        <option value="hospital">Hospital 🏥</option>
+        <option value="clinic">Clinic 🩺</option>
+        <option value="pharmacy">Pharmacy 💊</option>
+      </select>
+      <select id="searchLanguage">
+        <option value="">Any Language</option>
+        <option value="French">French</option>
+        <option value="English">English</option>
+        <option value="Ewondo">Ewondo</option>
+      </select>
+      <button onclick="searchServices()">Search</button>
+    </section>
+
+    <section id="results" class="card-grid"></section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
