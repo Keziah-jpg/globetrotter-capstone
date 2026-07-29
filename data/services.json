@@ -4,9 +4,10 @@
     "name": "Nyom District Hospital",
     "type": "hospital",
     "address": "Nyom Main Road",
-    "lat": 3.873,
-    "lng": 11.468,
-    "contact": "+237600000001",
+    "lat": 3.939,
+    "lng": 11.516,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/7/7f/HOPITAL_DE_DISTRICT_DE_LOGBABA.jpg",
+    "contact": "+237 222 23 14 68",
     "hours": {
       "open": "00:00",
       "close": "23:59"
@@ -22,7 +23,7 @@
       "Pharmacy",
       "Laboratory"
     ],
-    "rating": 4.4,
+    "rating": 4.3,
     "popular": true
   },
   {
@@ -30,9 +31,10 @@
     "name": "Pharmacie Centrale Nyom",
     "type": "pharmacy",
     "address": "Nyom Market",
-    "lat": 3.8695,
-    "lng": 11.4712,
-    "contact": "+237600000002",
+    "lat": 3.94,
+    "lng": 11.515,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/c/c9/Pharmacie_au_Cameroun.jpg",
+    "contact": "+237 699 45 21 08",
     "hours": {
       "open": "08:00",
       "close": "21:00"
@@ -45,7 +47,7 @@
       "Consultation",
       "Vaccination"
     ],
-    "rating": 4.1,
+    "rating": 4.6,
     "popular": true
   },
   {
@@ -53,9 +55,10 @@
     "name": "Clinique Espoir Nyom",
     "type": "clinic",
     "address": "Near Nyom Bus Station",
-    "lat": 3.8752,
-    "lng": 11.4739,
-    "contact": "+237600000003",
+    "lat": 3.942,
+    "lng": 11.5175,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/8/88/Laboratoire_hopital_douala.jpg",
+    "contact": "+237 654 33 87 12",
     "hours": {
       "open": "07:00",
       "close": "20:00"
@@ -71,17 +74,18 @@
       "Dental Care",
       "Laboratory"
     ],
-    "rating": 4.6,
+    "rating": 4.1,
     "popular": false
   },
   {
     "id": 4,
-    "name": "Centre de Sante Nyom II",
+    "name": "Centre de Santé Nyom II",
     "type": "clinic",
     "address": "Nyom II Road",
-    "lat": 3.8601,
-    "lng": 11.4658,
-    "contact": "+237600000004",
+    "lat": 3.96,
+    "lng": 11.525,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/1/1b/University_Teaching_Hospital_of_Yaounde_%28CHU%29_2014_from_behind.jpg",
+    "contact": "+237 691 20 74 55",
     "hours": {
       "open": "08:00",
       "close": "18:00"
@@ -99,39 +103,16 @@
   },
   {
     "id": 5,
-    "name": "Pharmacie du Carrefour Nyom",
-    "type": "pharmacy",
-    "address": "Carrefour Nyom",
-    "lat": 3.8674,
-    "lng": 11.4695,
-    "contact": "+237600000005",
+    "name": "Marché de Nyom",
+    "type": "market",
+    "address": "Nyom Main Road",
+    "lat": 3.9385,
+    "lng": 11.5165,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Spice_vendor_in_Yaounde_market.jpg",
+    "contact": "+237 675 88 41 09",
     "hours": {
-      "open": "07:30",
-      "close": "22:00"
-    },
-    "languages": [
-      "French",
-      "English"
-    ],
-    "services": [
-      "Medication",
-      "First Aid",
-      "Vaccination"
-    ],
-    "rating": 4,
-    "popular": false
-  },
-  {
-    "id": 6,
-    "name": "Polyclinique Nyom Sante Plus",
-    "type": "hospital",
-    "address": "Nyom Rond-Point",
-    "lat": 3.8718,
-    "lng": 11.4726,
-    "contact": "+237600000006",
-    "hours": {
-      "open": "00:00",
-      "close": "23:59"
+      "open": "06:00",
+      "close": "19:00"
     },
     "languages": [
       "French",
@@ -139,12 +120,137 @@
       "Ewondo"
     ],
     "services": [
-      "Emergency",
-      "Radiology",
-      "Consultation",
-      "Laboratory"
+      "Fresh Produce",
+      "Foodstuffs",
+      "Household Goods"
     ],
-    "rating": 4.3,
+    "rating": 4.4,
     "popular": true
+  },
+  {
+    "id": 6,
+    "name": "Marché de Nyom II",
+    "type": "market",
+    "address": "Nyom II Road",
+    "lat": 3.961,
+    "lng": 11.5245,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/0/07/Cameroon_market_in_Yaound%C3%A9.jpg",
+    "contact": "+237 696 14 60 27",
+    "hours": {
+      "open": "06:00",
+      "close": "18:00"
+    },
+    "languages": [
+      "French",
+      "Ewondo"
+    ],
+    "services": [
+      "Fresh Produce",
+      "Clothing",
+      "Household Goods"
+    ],
+    "rating": 4,
+    "popular": false
+  },
+  {
+    "id": 7,
+    "name": "Commissariat Central N°1 de Yaoundé (Secteur Nyom)",
+    "type": "police",
+    "address": "Nyom Main Road",
+    "lat": 3.9375,
+    "lng": 11.514,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Yaounde_traffic_police.jpg",
+    "contact": "+237 222 23 10 45",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Emergency Response",
+      "Reporting",
+      "Community Policing"
+    ],
+    "rating": 3.8,
+    "popular": true
+  },
+  {
+    "id": 8,
+    "name": "Brigade de Gendarmerie de Nyom II",
+    "type": "police",
+    "address": "Nyom II Road",
+    "lat": 3.9615,
+    "lng": 11.526,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/b/bf/PoliceCamerounaise25.jpg",
+    "contact": "+237 222 23 55 89",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Emergency Response",
+      "Patrols",
+      "Community Policing"
+    ],
+    "rating": 3.7,
+    "popular": false
+  },
+  {
+    "id": 9,
+    "name": "Paroisse Saint-Pierre de Nyom II",
+    "type": "church",
+    "address": "Nyom II Road",
+    "lat": 3.9762299,
+    "lng": 11.517179,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/a/a0/Cath%C3%A9drale_Notre_Dame_Des_Vistoires_de_Yaound%C3%A9.jpg",
+    "contact": "+237 674 56 32 90",
+    "hours": {
+      "open": "06:00",
+      "close": "19:00"
+    },
+    "languages": [
+      "French",
+      "Ewondo"
+    ],
+    "services": [
+      "Mass",
+      "Confession",
+      "Community Outreach"
+    ],
+    "rating": 4.8,
+    "popular": true
+  },
+  {
+    "id": 10,
+    "name": "Église Presbytérienne Camerounaise de Nyom",
+    "type": "church",
+    "address": "Nyom Main Road",
+    "lat": 3.9395,
+    "lng": 11.5145,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Yaound%C3%A9_Cath%C3%A9drale.jpg",
+    "contact": "+237 690 77 15 42",
+    "hours": {
+      "open": "06:00",
+      "close": "19:00"
+    },
+    "languages": [
+      "French",
+      "English",
+      "Ewondo"
+    ],
+    "services": [
+      "Worship Service",
+      "Bible Study",
+      "Community Outreach"
+    ],
+    "rating": 4.5,
+    "popular": false
   }
 ]

@@ -2,73 +2,56 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - Nyom Health Locator</title>
+  <title>Login - Nyom Locator</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <header class="site-header">
-    <a href="index.html" class="brand"><span class="brand-mark"><i class="fa-solid fa-heart-pulse"></i></span>Nyom Health Locator</a>
-    <nav class="site-nav">
-      <a href="index.html">Home</a>
-      <a href="services.html">Directory</a>
-      <a href="login.html" class="active" id="navAuthLink">Login</a>
-    </nav>
-    <span id="userChip"><i class="fa-solid fa-circle-user"></i> <span id="userChipName"></span> <button onclick="logoutUser()">Log out</button></span>
+  <header>
+    <div class="header-inner">
+      <h1><i class="fa-solid fa-map-location-dot"></i> Nyom Locator <span class="tag">Yaoundé</span></h1>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="services.html">Places</a>
+      </nav>
+    </div>
   </header>
 
-  <section class="hero">
-    <span class="eyebrow">Your account</span>
-    <h1>Welcome back, traveller</h1>
-    <p>Sign in to save favorites, share services with friends, and add new places you've discovered around Nyom.</p>
-  </section>
+  <main>
+    <div class="auth-hero">
+      <div class="auth-visual">
+        <h2>Find every corner of Nyom</h2>
+        <p>Create an account to add places, edit listings and share hospitals, markets, police stations and churches with others &mdash; all in one directory built for the Nyom neighborhood of Yaoundé.</p>
+        <div class="chip-list">
+          <span class="chip"><i class="fa-solid fa-hospital"></i> Hospitals</span>
+          <span class="chip"><i class="fa-solid fa-store"></i> Markets</span>
+          <span class="chip"><i class="fa-solid fa-shield-halved"></i> Police</span>
+          <span class="chip"><i class="fa-solid fa-place-of-worship"></i> Churches</span>
+        </div>
+      </div>
 
-  <section class="auth-wrap">
-    <div class="form-card">
-      <h2><i class="fa-solid fa-user-plus"></i> Register</h2>
-      <p class="hint">New here? Create an account in a few seconds.</p>
-      <div class="field">
-        <label for="regName">Full name</label>
-        <input type="text" id="regName" placeholder="Amara Nkeng">
+      <div class="auth-forms">
+        <section class="form">
+          <h2>Register</h2>
+          <input type="text" id="regName" placeholder="Name">
+          <input type="email" id="regEmail" placeholder="Email">
+          <input type="password" id="regPassword" placeholder="Password">
+          <button onclick="registerUser()"><i class="fa-solid fa-user-plus"></i> Register</button>
+        </section>
+
+        <section class="form">
+          <h2>Login</h2>
+          <input type="email" id="loginEmail" placeholder="Email">
+          <input type="password" id="loginPassword" placeholder="Password">
+          <button onclick="loginUser()"><i class="fa-solid fa-right-to-bracket"></i> Login</button>
+        </section>
+
+        <div id="loginResult"></div>
       </div>
-      <div class="field">
-        <label for="regEmail">Email</label>
-        <input type="email" id="regEmail" placeholder="you@example.com">
-      </div>
-      <div class="field password-field">
-        <label for="regPassword">Password</label>
-        <input type="password" id="regPassword" placeholder="At least 4 characters">
-        <button type="button" class="ghost" onclick="togglePassword('regPassword', this)"><i class="fa-solid fa-eye"></i></button>
-      </div>
-      <button onclick="registerUser()"><i class="fa-solid fa-user-plus"></i> Create account</button>
     </div>
+  </main>
 
-    <div class="form-card">
-      <h2><i class="fa-solid fa-right-to-bracket"></i> Login</h2>
-      <p class="hint">Already registered? Welcome back.</p>
-      <div class="field">
-        <label for="loginEmail">Email</label>
-        <input type="email" id="loginEmail" placeholder="you@example.com">
-      </div>
-      <div class="field password-field">
-        <label for="loginPassword">Password</label>
-        <input type="password" id="loginPassword" placeholder="Your password">
-        <button type="button" class="ghost" onclick="togglePassword('loginPassword', this)"><i class="fa-solid fa-eye"></i></button>
-      </div>
-      <button onclick="loginUser()"><i class="fa-solid fa-right-to-bracket"></i> Log in</button>
-    </div>
-  </section>
-
-  <p style="text-align:center; color: var(--ink-600);" id="loginResult"></p>
-
-  <footer class="site-footer">
-    Nyom Health Locator &middot; GlobeTrotter capstone project
-  </footer>
-
-  <div id="toastStack"></div>
+  <footer>Nyom Locator &mdash; passwords are hashed with scrypt and never stored in plain text.</footer>
 
   <script src="app.js"></script>
 </body>

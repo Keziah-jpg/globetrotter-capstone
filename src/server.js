@@ -1,187 +1,190 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const app = express();
-
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
-const EARTH_RADIUS_KM = 6371;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 function readJson(file) {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), 'utf8'));
-  } catch (err) {
-    if (err.code === 'ENOENT') return [];
-    throw err;
-  }
+  return JSON.parse(fs.readFileSync(path.join(__dirname, '../data', file)));
 }
 function writeJson(file, data) {
-  fs.writeFileSync(path.join(DATA_DIR, file), JSON.stringify(data, null, 2));
+  fs.writeFileSync(path.join(__dirname, '../data', file), JSON.stringify(data, null, 2));
 }
 
-function distanceKm(lat1, lng1, lat2, lng2) {
-  const toRad = (deg) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+// Password hashing (Node's built-in scrypt - no external dependency)
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return { salt, hash };
+}
+function verifyPassword(password, salt, hash) {
+  const check = crypto.scryptSync(password, salt, 64).toString('hex');
+  const a = Buffer.from(check, 'hex');
+  const b = Buffer.from(hash, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+function publicUser(u) {
+  return { id: u.id, name: u.name, email: u.email, preferences: u.preferences || [] };
 }
 
+// Auth guard for write routes - expects x-user-email of a registered user
+function requireAuth(req, res, next) {
+  const email = req.headers['x-user-email'];
+  if (!email) return res.status(401).json({ message: 'Login required' });
+  const users = readJson('users.json');
+  const user = users.find(u => u.email === email);
+  if (!user) return res.status(401).json({ message: 'Invalid user' });
+  req.authUser = user;
+  next();
+}
+
+// Haversine distance in km
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Attach distanceKm and sort by it when lat/lng are provided
 function withDistance(services, lat, lng) {
-  if (lat === undefined || lng === undefined) return services;
-  const userLat = parseFloat(lat);
-  const userLng = parseFloat(lng);
-  if (Number.isNaN(userLat) || Number.isNaN(userLng)) return services;
+  if (lat === undefined || lng === undefined || Number.isNaN(lat) || Number.isNaN(lng)) {
+    return services;
+  }
   return services
     .map(s => ({
       ...s,
-      distanceKm:
-        typeof s.lat === 'number' && typeof s.lng === 'number'
-          ? Math.round(distanceKm(userLat, userLng, s.lat, s.lng) * 10) / 10
-          : null
+      distanceKm: (s.lat != null && s.lng != null)
+        ? Math.round(haversineKm(lat, lng, s.lat, s.lng) * 10) / 10
+        : null
     }))
     .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
 }
 
-// Very lightweight access control: write routes require a header identifying
-// a registered user. Not a replacement for real sessions/JWTs, but it stops
-// anonymous writes without adding a full auth stack under time pressure.
-function requireUser(req, res, next) {
-  const email = req.header('x-user-email');
-  if (!email) return res.status(401).json({ message: 'Login required (missing x-user-email header)' });
-  const users = readJson('users.json');
-  const user = users.find(u => u.email === email);
-  if (!user) return res.status(401).json({ message: 'Unknown user' });
-  req.user = user;
-  next();
+function parseLatLng(query) {
+  const lat = query.lat !== undefined ? parseFloat(query.lat) : undefined;
+  const lng = query.lng !== undefined ? parseFloat(query.lng) : undefined;
+  return { lat, lng };
 }
 
-// ---------- Users ----------
-
+// Register user
 app.post('/users', (req, res) => {
   const { name, email, password, preferences } = req.body;
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: 'name, email and password are required' });
-  }
-  const users = readJson('users.json');
-  if (users.some(u => u.email === email)) {
+  let users = readJson('users.json');
+  if (users.find(u => u.email === email)) {
     return res.status(409).json({ message: 'Email already registered' });
   }
-  const user = { id: Date.now(), name, email, password: bcrypt.hashSync(password, 10), preferences: preferences || [] };
+  const { salt, hash } = hashPassword(password);
+  const user = { id: Date.now(), name, email, salt, hash, preferences: preferences || [] };
   users.push(user);
   writeJson('users.json', users);
-  const { password: _pw, ...safeUser } = user;
-  res.json(safeUser);
+  res.json(publicUser(user));
 });
 
+// Login
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
-  const users = readJson('users.json');
+  let users = readJson('users.json');
   const user = users.find(u => u.email === email);
-  if (user && bcrypt.compareSync(password || '', user.password)) {
-    const { password: _pw, ...safeUser } = user;
-    res.json({ message: 'Login successful', user: safeUser });
+  if (user && verifyPassword(password, user.salt, user.hash)) {
+    res.json({ message: 'Login successful', user: publicUser(user) });
   } else {
     res.status(401).json({ message: 'Invalid credentials' });
   }
 });
 
-// ---------- Services ----------
-// Static sub-paths (search, share, nearby) must be declared before the
-// generic '/services/:id' route so Express doesn't treat them as an id.
+// Add a place (auth required)
+app.post('/services', requireAuth, (req, res) => {
+  let services = readJson('services.json');
+  const nextId = services.reduce((max, s) => Math.max(max, s.id), 0) + 1;
+  const service = {
+    id: nextId,
+    rating: 0,
+    popular: false,
+    ...req.body,
+  };
+  services.push(service);
+  writeJson('services.json', services);
+  res.json(service);
+});
 
+// Update a place (auth required)
+app.put('/services/:id', requireAuth, (req, res) => {
+  let services = readJson('services.json');
+  const id = parseInt(req.params.id, 10);
+  const idx = services.findIndex(s => s.id === id);
+  if (idx === -1) return res.status(404).json({ message: 'Not found' });
+  services[idx] = { ...services[idx], ...req.body, id };
+  writeJson('services.json', services);
+  res.json(services[idx]);
+});
+
+// Delete a place (auth required)
+app.delete('/services/:id', requireAuth, (req, res) => {
+  let services = readJson('services.json');
+  const id = parseInt(req.params.id, 10);
+  const exists = services.some(s => s.id === id);
+  if (!exists) return res.status(404).json({ message: 'Not found' });
+  services = services.filter(s => s.id !== id);
+  writeJson('services.json', services);
+  res.json({ message: 'Deleted' });
+});
+
+// View all places (optional ?lat=&lng= for distance sort)
+app.get('/services', (req, res) => {
+  const { lat, lng } = parseLatLng(req.query);
+  res.json(withDistance(readJson('services.json'), lat, lng));
+});
+
+// Search places
 app.get('/services/search', (req, res) => {
-  const { type, name, language, lat, lng } = req.query;
-  const services = readJson('services.json');
-  const results = services.filter(s => {
-    return (!type || s.type === type) &&
-      (!name || s.name.toLowerCase().includes(name.toLowerCase())) &&
+  const { type, name, language } = req.query;
+  const { lat, lng } = parseLatLng(req.query);
+  let services = readJson('services.json');
+  const q = name ? name.toLowerCase() : '';
+  let results = services.filter(s => {
+    const matchesQuery = !q ||
+      s.name.toLowerCase().includes(q) ||
+      s.type.toLowerCase().includes(q) ||
+      s.address.toLowerCase().includes(q);
+    return matchesQuery &&
+      (!type || s.type === type) &&
       (!language || s.languages.includes(language));
   });
   res.json(withDistance(results, lat, lng));
 });
 
-app.post('/services/share', requireUser, (req, res) => {
-  const { serviceId, sharedWith } = req.body;
-  if (!serviceId || !sharedWith) {
-    return res.status(400).json({ message: 'serviceId and sharedWith are required' });
-  }
-  const shares = readJson('shares.json');
-  const share = { id: Date.now(), serviceId, sharedWith, sharedBy: req.user.email, sharedAt: new Date().toISOString() };
+// Get a single place
+app.get('/services/:id', (req, res) => {
+  const services = readJson('services.json');
+  const service = services.find(s => s.id === parseInt(req.params.id, 10));
+  if (!service) return res.status(404).json({ message: 'Not found' });
+  res.json(service);
+});
+
+// Share a place (auth required)
+app.post('/services/share', requireAuth, (req, res) => {
+  let shares = readJson('shares.json');
+  const share = { ...req.body, sharedBy: req.authUser.email, sharedAt: new Date().toISOString() };
   shares.push(share);
   writeJson('shares.json', shares);
   res.json(share);
 });
 
-app.get('/services', (req, res) => {
-  const { lat, lng } = req.query;
-  res.json(withDistance(readJson('services.json'), lat, lng));
-});
-
-app.post('/services', requireUser, (req, res) => {
-  const { name, type, address } = req.body;
-  if (!name || !type || !address) {
-    return res.status(400).json({ message: 'name, type and address are required' });
-  }
-  const services = readJson('services.json');
-  const service = {
-    id: Date.now(),
-    name,
-    type,
-    address,
-    lat: typeof req.body.lat === 'number' ? req.body.lat : null,
-    lng: typeof req.body.lng === 'number' ? req.body.lng : null,
-    contact: req.body.contact || '',
-    hours: req.body.hours || { open: '00:00', close: '23:59' },
-    languages: Array.isArray(req.body.languages) ? req.body.languages : [],
-    services: Array.isArray(req.body.services) ? req.body.services : [],
-    rating: typeof req.body.rating === 'number' ? req.body.rating : null,
-    popular: false,
-    addedBy: req.user.email
-  };
-  services.push(service);
-  writeJson('services.json', services);
-  res.status(201).json(service);
-});
-
-app.get('/services/:id', (req, res) => {
-  const service = readJson('services.json').find(s => String(s.id) === req.params.id);
-  if (!service) return res.status(404).json({ message: 'Service not found' });
-  res.json(service);
-});
-
-app.put('/services/:id', requireUser, (req, res) => {
-  const services = readJson('services.json');
-  const idx = services.findIndex(s => String(s.id) === req.params.id);
-  if (idx === -1) return res.status(404).json({ message: 'Service not found' });
-  services[idx] = { ...services[idx], ...req.body, id: services[idx].id };
-  writeJson('services.json', services);
-  res.json(services[idx]);
-});
-
-app.delete('/services/:id', requireUser, (req, res) => {
-  const services = readJson('services.json');
-  const idx = services.findIndex(s => String(s.id) === req.params.id);
-  if (idx === -1) return res.status(404).json({ message: 'Service not found' });
-  const [removed] = services.splice(idx, 1);
-  writeJson('services.json', services);
-  res.json(removed);
-});
-
-// ---------- Recommendations & metrics ----------
-
+// Recommendations - popular places (optional ?lat=&lng=)
 app.get('/recommendations', (req, res) => {
-  const { lat, lng } = req.query;
+  const { lat, lng } = parseLatLng(req.query);
   const services = readJson('services.json');
   const popular = services.filter(s => s.popular);
   res.json(withDistance(popular, lat, lng));
 });
 
+// Metrics
 app.get('/metrics', (req, res) => {
   res.json({
     users: readJson('users.json').length,
@@ -191,6 +194,7 @@ app.get('/metrics', (req, res) => {
 });
 
 if (require.main === module) {
-  app.listen(3000, () => console.log('Nyom Health API running on port 3000'));
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`Nyom Locator API running on port ${PORT}`));
 }
 module.exports = app;

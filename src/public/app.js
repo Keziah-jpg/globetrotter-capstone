@@ -1,338 +1,236 @@
-// ============================================================
-// Nyom Health Locator — front-end
-// ============================================================
+// Icon + label per place type
+const TYPE_META = {
+  hospital: { icon: 'fa-hospital', label: 'Hospital' },
+  clinic: { icon: 'fa-stethoscope', label: 'Clinic' },
+  pharmacy: { icon: 'fa-prescription-bottle-medical', label: 'Pharmacy' },
+  market: { icon: 'fa-store', label: 'Market' },
+  police: { icon: 'fa-shield-halved', label: 'Police' },
+  church: { icon: 'fa-place-of-worship', label: 'Church' }
+};
 
-const USER_KEY = 'nyomUser';
-const FAVORITES_KEY = 'nyomFavorites';
-let userCoords = null;
-let pendingShareServiceId = null;
-
-// ---------- session helpers ----------
-
-function getCurrentUser() {
-  try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch { return null; }
-}
-
-function setCurrentUser(user) {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-  updateAuthUI();
-}
-
-function logoutUser() {
-  localStorage.removeItem(USER_KEY);
-  updateAuthUI();
-  showToast('Logged out. See you again soon!');
-  setTimeout(() => { window.location.href = 'index.html'; }, 600);
-}
-
-function updateAuthUI() {
-  const user = getCurrentUser();
-  const chip = document.getElementById('userChip');
-  const chipName = document.getElementById('userChipName');
-  const navAuthLink = document.getElementById('navAuthLink');
-  if (!chip) return;
-  if (user) {
-    chip.classList.add('show');
-    if (chipName) chipName.textContent = user.name;
-    if (navAuthLink) navAuthLink.style.display = 'none';
-  } else {
-    chip.classList.remove('show');
-    if (navAuthLink) navAuthLink.style.display = '';
-  }
-  refreshAddServiceHint();
+function currentUser() {
+  try { return JSON.parse(localStorage.getItem('user') || 'null'); }
+  catch (e) { return null; }
 }
 
 function authHeaders() {
-  const user = getCurrentUser();
+  const user = currentUser();
   return user ? { 'x-user-email': user.email } : {};
 }
 
-// ---------- toasts ----------
-
-function showToast(message, type = 'success') {
-  const stack = document.getElementById('toastStack');
-  if (!stack) { return; }
-  const toast = document.createElement('div');
-  toast.className = `toast${type === 'error' ? ' error' : ''}`;
-  toast.textContent = message;
-  stack.appendChild(toast);
-  setTimeout(() => toast.remove(), 3200);
+// Renders 5-star rating with a numeric score
+function starsHtml(rating) {
+  const r = Math.round((rating || 0) * 2) / 2;
+  let html = '';
+  for (let i = 1; i <= 5; i++) {
+    if (r >= i) html += '<i class="fa-solid fa-star"></i>';
+    else if (r >= i - 0.5) html += '<i class="fa-solid fa-star-half-stroke"></i>';
+    else html += '<i class="fa-regular fa-star far-empty"></i>';
+  }
+  return `<span class="rating">${html}<span class="score">${(rating || 0).toFixed(1)}</span></span>`;
 }
 
-// ---------- misc ui helpers ----------
-
-function togglePassword(fieldId, btn) {
-  const input = document.getElementById(fieldId);
-  const isPw = input.type === 'password';
-  input.type = isPw ? 'text' : 'password';
-  btn.innerHTML = isPw ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
-}
-
-function starString(rating) {
-  if (typeof rating !== 'number') return '';
-  const full = Math.round(rating);
-  return '★'.repeat(full) + '☆'.repeat(5 - full);
-}
-
-function computeOpenStatus(hours) {
-  if (!hours || !hours.open || !hours.close) return null;
+// Computes open/closed from the place's hours, using the browser's local time
+function isOpenNow(hours) {
   const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
   const [oh, om] = hours.open.split(':').map(Number);
   const [ch, cm] = hours.close.split(':').map(Number);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const openMinutes = oh * 60 + om;
-  const closeMinutes = ch * 60 + cm;
-  const isOpen = closeMinutes <= openMinutes
-    ? true // spans midnight or 24h (00:00-23:59) — treat as always open
-    : nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
-  return isOpen;
+  const openMin = oh * 60 + om, closeMin = ch * 60 + cm;
+  if (closeMin <= openMin) return cur >= openMin || cur < closeMin;
+  return cur >= openMin && cur < closeMin;
 }
 
-function getFavorites() {
-  try { return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || []; } catch { return []; }
-}
-
-function isFavorite(id) { return getFavorites().includes(id); }
-
-function toggleFavorite(id, btn) {
-  let favs = getFavorites();
-  if (favs.includes(id)) {
-    favs = favs.filter(f => f !== id);
-    showToast('Removed from favorites');
-  } else {
-    favs.push(id);
-    showToast('Saved to favorites');
-  }
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
-  if (btn) {
-    const icon = btn.querySelector('i');
-    icon.className = favs.includes(id) ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
-  }
-}
-
-// ---------- card rendering ----------
-
+// Render service card with map, rating, open/closed status + auth-gated edit/delete
 function renderServiceCard(s) {
-  const openStatus = computeOpenStatus(s.hours);
-  const statusBadge = openStatus === null ? '' :
-    `<span class="badge ${openStatus ? 'status-open' : 'status-closed'}">${openStatus ? 'Open now' : 'Closed'}</span>`;
-  const distanceBadge = typeof s.distanceKm === 'number' ?
-    `<span class="distance-chip"><i class="fa-solid fa-route"></i> ${s.distanceKm} km away</span>` : '';
-  const ratingLine = typeof s.rating === 'number' ?
-    `<p><span style="color:#d99a1a;">${starString(s.rating)}</span> ${s.rating.toFixed(1)}</p>` : '';
-  const fav = isFavorite(s.id);
+  const meta = TYPE_META[s.type] || { icon: 'fa-map-pin', label: s.type };
+  const open = isOpenNow(s.hours);
+  const distance = (s.distanceKm !== undefined && s.distanceKm !== null)
+    ? `<span class="distance-chip"><i class="fa-solid fa-route"></i> ${s.distanceKm} km</span>`
+    : '';
+  const user = currentUser();
+  const ownerActions = user ? `
+        <button class="btn-outline" onclick="editService(${s.id})"><i class="fa-solid fa-pen"></i> Edit</button>
+        <button class="btn-danger" onclick="deleteService(${s.id})"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
+
+  const photo = s.image
+    ? `<img class="card-photo" src="${s.image}" alt="${s.name}" loading="lazy" onerror="this.style.display='none'">`
+    : '';
 
   return `
-    <div class="card fade-in">
+    <div class="card fade-in" data-type="${s.type}">
+      ${photo}
       <div class="card-top">
-        <span class="badge ${s.type}">${s.type}</span>
-        ${statusBadge}
+        <span class="badge" data-type="${s.type}"><i class="fa-solid ${meta.icon}"></i> ${meta.label}</span>
+        <span>
+          <span class="status-chip ${open ? 'open' : 'closed'}">${open ? 'Open now' : 'Closed'}</span>
+          ${distance}
+        </span>
       </div>
       <h3>${s.name}</h3>
+      ${starsHtml(s.rating)}
       <p><i class="fa-solid fa-location-dot"></i> ${s.address}</p>
-      ${s.contact ? `<p><i class="fa-solid fa-phone"></i> ${s.contact}</p>` : ''}
-      ${s.hours ? `<p><i class="fa-regular fa-clock"></i> ${s.hours.open} – ${s.hours.close}</p>` : ''}
-      ${s.languages && s.languages.length ? `<p><i class="fa-solid fa-language"></i> ${s.languages.join(', ')}</p>` : ''}
-      ${s.services && s.services.length ? `<p><i class="fa-solid fa-stethoscope"></i> ${s.services.join(', ')}</p>` : ''}
-      ${ratingLine}
-      ${distanceBadge}
+      <p><i class="fa-solid fa-phone"></i> ${s.contact}</p>
+      <p><i class="fa-regular fa-clock"></i> ${s.hours.open} - ${s.hours.close}</p>
+      <p><i class="fa-solid fa-language"></i> ${s.languages.join(', ')}</p>
+      <p><i class="fa-solid fa-tags"></i> ${s.services.join(', ')}</p>
+      <iframe class="map-embed" loading="lazy" src="https://www.google.com/maps?q=${s.lat},${s.lng}(${encodeURIComponent(s.name)})&z=16&output=embed"></iframe>
       <div class="card-actions">
-        <button class="secondary" onclick="openShareModal(${s.id})"><i class="fa-solid fa-share"></i> Share</button>
-        <button class="${fav ? '' : 'secondary'}" onclick="toggleFavorite(${s.id}, this)">
-          <i class="fa-${fav ? 'solid' : 'regular'} fa-heart"></i> ${fav ? 'Saved' : 'Save'}
-        </button>
-        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address + ' Nyom')}" target="_blank" rel="noopener">
-          <button class="secondary" type="button"><i class="fa-solid fa-map"></i> Map</button>
-        </a>
+        <button onclick="shareService(${s.id})"><i class="fa-solid fa-share"></i> Share</button>
+        <button class="btn-outline" onclick="saveFavorite(${s.id})"><i class="fa-solid fa-heart"></i> Save</button>
+        <a href="https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}" target="_blank">
+          <button class="btn-outline"><i class="fa-solid fa-map"></i> Open in Maps</button>
+        </a>${ownerActions}
       </div>
     </div>
   `;
 }
 
-function renderList(containerId, services, emptyMessage) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  if (!services.length) {
-    el.innerHTML = `<div class="empty-state">${emptyMessage || 'No results found.'}</div>`;
+// Results container works on either index.html (#results) or services.html (#servicesList)
+function getListContainer() {
+  return document.getElementById('results') || document.getElementById('servicesList');
+}
+
+function renderList(data) {
+  const list = getListContainer();
+  if (!list) return;
+  list.innerHTML = '';
+  if (data.length === 0) {
+    list.innerHTML = `<div class="card"><h3><i class="fa-solid fa-magnifying-glass"></i> No results found</h3></div>`;
     return;
   }
-  el.innerHTML = services.map(renderServiceCard).join('');
+  data.forEach(s => { list.innerHTML += renderServiceCard(s); });
 }
 
-// ---------- share modal ----------
-
-function openShareModal(id) {
-  if (!getCurrentUser()) {
-    showToast('Log in first to share a service', 'error');
-    setTimeout(() => { window.location.href = 'login.html'; }, 900);
-    return;
-  }
-  pendingShareServiceId = id;
-  document.getElementById('shareModal').classList.add('show');
-}
-
-function closeShareModal() {
-  document.getElementById('shareModal').classList.remove('show');
-  document.getElementById('shareEmail').value = '';
-  pendingShareServiceId = null;
-}
-
-async function confirmShare() {
-  const email = document.getElementById('shareEmail').value.trim();
-  if (!email) { showToast('Enter an email address', 'error'); return; }
-  const res = await fetch('/services/share', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ serviceId: pendingShareServiceId, sharedWith: email })
-  });
-  if (res.ok) {
-    showToast('Service shared!');
-    closeShareModal();
-  } else {
-    const data = await res.json().catch(() => ({}));
-    showToast(data.message || 'Could not share service', 'error');
-  }
-}
-
-// ---------- home page: search + near me ----------
-
-async function searchServices() {
-  const name = document.getElementById('searchName')?.value || '';
-  const type = document.getElementById('searchType')?.value || '';
-  const language = document.getElementById('searchLanguage')?.value || '';
-
-  const params = new URLSearchParams({ name, type, language });
-  if (userCoords) {
-    params.set('lat', userCoords.lat);
-    params.set('lng', userCoords.lng);
-  }
-  const res = await fetch(`/services/search?${params}`);
-  const data = await res.json();
-  renderList('results', data, 'No services match your search — try a different filter.');
-
-  const subtitle = document.getElementById('resultsSubtitle');
-  if (subtitle) {
-    subtitle.textContent = userCoords
-      ? 'Sorted by distance from your current location'
-      : 'Showing every registered health service in Nyom';
-  }
-}
-
-function setActiveChip(type) {
-  document.querySelectorAll('#typeChips .chip').forEach(chip => {
-    chip.classList.toggle('active', chip.dataset.type === type);
-  });
-}
-
-function useMyLocation() {
-  if (!navigator.geolocation) {
-    showToast('Geolocation is not supported by this browser', 'error');
-    return;
-  }
-  const btn = document.getElementById('nearMeBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Locating...';
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      userCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Near me ✓';
-      showToast('Location found — sorting by distance');
-      searchServices();
-    },
-    () => {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Near me';
-      showToast('Could not get your location', 'error');
-    }
-  );
-}
-
-async function loadRecommendations() {
-  const container = document.getElementById('recommendations');
-  if (!container) return;
-  const params = new URLSearchParams();
-  if (userCoords) { params.set('lat', userCoords.lat); params.set('lng', userCoords.lng); }
-  const res = await fetch(`/recommendations?${params}`);
-  const data = await res.json();
-  const toolbar = document.getElementById('recoToolbar');
-  if (toolbar) toolbar.style.display = data.length ? '' : 'none';
-  renderList('recommendations', data, '');
-}
-
-// ---------- services directory page ----------
-
-async function loadServices() {
+// Stat bar: totals by category
+async function loadStatBar() {
+  const bar = document.getElementById('statBar');
+  if (!bar) return;
   const res = await fetch('/services');
   const data = await res.json();
-  const sortBy = document.getElementById('sortBy')?.value || 'name';
-  const sorted = [...data].sort((a, b) => {
-    if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
-    return a.name.localeCompare(b.name);
+  const counts = {};
+  data.forEach(s => { counts[s.type] = (counts[s.type] || 0) + 1; });
+  const order = ['hospital', 'clinic', 'pharmacy', 'market', 'police', 'church'];
+  let html = `<div class="stat-tile"><div class="num">${data.length}</div><div class="label">Total Places</div></div>`;
+  order.forEach(type => {
+    const meta = TYPE_META[type];
+    html += `<div class="stat-tile"><div class="num">${counts[type] || 0}</div><div class="label">${meta.label}s</div></div>`;
   });
-  renderList('servicesList', sorted, 'No services registered yet.');
-  const countLabel = document.getElementById('countLabel');
-  if (countLabel) countLabel.textContent = `${data.length} service${data.length === 1 ? '' : 's'} registered`;
+  bar.innerHTML = html;
 }
 
-function refreshAddServiceHint() {
-  const hint = document.getElementById('addServiceHint');
-  const panel = document.getElementById('addServicePanel');
-  if (!hint || !panel) return;
-  const user = getCurrentUser();
-  hint.textContent = user
-    ? `Contributing as ${user.name}. Thanks for helping other travellers.`
-    : 'You need to be logged in to add a service.';
+// ---------- Ask Nyom Locator: natural-language assistant ----------
+const TYPE_SYNONYMS = {
+  hospital: ['hospital', 'emergency', 'surgery', 'maternity', 'accident'],
+  clinic: ['clinic', 'doctor', 'consultation', 'dentist', 'pediatric'],
+  pharmacy: ['pharmacy', 'pharmacie', 'medicine', 'medication', 'drug', 'drugs'],
+  market: ['market', 'marche', 'marché', 'shopping', 'food', 'produce', 'groceries'],
+  police: ['police', 'gendarmerie', 'security', 'station', 'crime', 'report'],
+  church: ['church', 'parish', 'paroisse', 'mass', 'cathedral', 'worship', 'pray']
+};
+
+function detectType(q) {
+  for (const [type, words] of Object.entries(TYPE_SYNONYMS)) {
+    if (words.some(w => q.includes(w))) return type;
+  }
+  return null;
 }
 
-async function addService() {
-  if (!getCurrentUser()) {
-    showToast('Log in first to add a service', 'error');
-    setTimeout(() => { window.location.href = 'login.html'; }, 900);
+async function askAssistant() {
+  const raw = document.getElementById('askInput').value.trim();
+  const reply = document.getElementById('assistantReply');
+  if (!raw) return;
+  const q = raw.toLowerCase();
+
+  const wantsNear = /\b(near|nearest|closest|around me|nearby)\b/.test(q);
+  const wantsOpen = /\bopen\b/.test(q) && !/\bopen(ing)? (a|an)\b/.test(q);
+  const type = detectType(q);
+
+  reply.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Thinking...`;
+
+  const runFilter = (data) => {
+    let results = data;
+    if (type) results = results.filter(s => s.type === type);
+    if (wantsOpen) results = results.filter(s => isOpenNow(s.hours));
+    return results;
+  };
+
+  const finish = (results, viaLocation) => {
+    renderList(results);
+    const typeLabel = type ? (TYPE_META[type].label.toLowerCase() + (results.length === 1 ? '' : 's')) : 'places';
+    if (results.length === 0) {
+      reply.innerHTML = `<i class="fa-solid fa-circle-info"></i> I couldn't find any ${typeLabel}${wantsOpen ? ' open right now' : ''} in Nyom matching "${raw}".`;
+      return;
+    }
+    let msg = `Found <strong>${results.length}</strong> ${typeLabel}${wantsOpen ? ' open right now' : ''} in Nyom.`;
+    if (viaLocation && results[0].distanceKm != null) {
+      msg += ` Closest: <strong>${results[0].name}</strong> (${results[0].distanceKm} km away).`;
+    } else {
+      msg += ` Top match: <strong>${results[0].name}</strong>.`;
+    }
+    reply.innerHTML = `<i class="fa-solid fa-robot"></i> ${msg}`;
+  };
+
+  if (wantsNear && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      const res = await fetch(`/services?lat=${latitude}&lng=${longitude}`);
+      const data = await res.json();
+      finish(runFilter(data), true);
+    }, async () => {
+      const res = await fetch('/services');
+      const data = await res.json();
+      finish(runFilter(data), false);
+    });
     return;
   }
-  const name = document.getElementById('newName').value.trim();
-  const type = document.getElementById('newType').value;
-  const address = document.getElementById('newAddress').value.trim();
-  const contact = document.getElementById('newContact').value.trim();
-  const languages = document.getElementById('newLanguages').value
-    .split(',').map(l => l.trim()).filter(Boolean);
 
-  if (!name || !address) {
-    showToast('Name and address are required', 'error');
+  if (type || wantsOpen) {
+    const res = await fetch('/services');
+    const data = await res.json();
+    finish(runFilter(data), false);
     return;
   }
 
-  const res = await fetch('/services', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ name, type, address, contact, languages })
-  });
-
-  if (res.ok) {
-    showToast('Service added — thank you!');
-    document.getElementById('newName').value = '';
-    document.getElementById('newAddress').value = '';
-    document.getElementById('newContact').value = '';
-    document.getElementById('newLanguages').value = '';
-    loadServices();
-  } else {
-    const data = await res.json().catch(() => ({}));
-    showToast(data.message || 'Could not add service', 'error');
-  }
+  // Fall back to plain keyword search across name/type/address
+  const res = await fetch(`/services/search?name=${encodeURIComponent(raw)}`);
+  const data = await res.json();
+  finish(data, false);
 }
 
-// ---------- auth page ----------
+// Search services
+async function searchServices() {
+  const name = document.getElementById('searchName').value;
+  const type = document.getElementById('searchType').value;
+  const language = document.getElementById('searchLanguage').value;
 
+  const query = new URLSearchParams({ name, type, language });
+  const res = await fetch(`/services/search?${query}`);
+  const data = await res.json();
+  renderList(data);
+}
+
+// Near Me: geolocate and sort every place by real distance
+function findNearMe() {
+  if (!navigator.geolocation) {
+    alert('Geolocation is not supported in this browser.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude, longitude } = pos.coords;
+    const res = await fetch(`/services?lat=${latitude}&lng=${longitude}`);
+    const data = await res.json();
+    renderList(data);
+  }, () => {
+    alert('Could not get your location. Showing places sorted by relevance instead.');
+  });
+}
+
+// Register user
 async function registerUser() {
-  const name = document.getElementById('regName').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
+  const name = document.getElementById('regName').value;
+  const email = document.getElementById('regEmail').value;
   const password = document.getElementById('regPassword').value;
-
-  if (!name || !email || !password) {
-    showToast('Fill in name, email and password', 'error');
-    return;
-  }
 
   const res = await fetch('/users', {
     method: 'POST',
@@ -340,17 +238,14 @@ async function registerUser() {
     body: JSON.stringify({ name, email, password, preferences: [] })
   });
   const data = await res.json();
-  if (res.ok) {
-    showToast(`Welcome, ${data.name}! Redirecting...`);
-    setCurrentUser(data);
-    setTimeout(() => { window.location.href = 'index.html'; }, 700);
-  } else {
-    showToast(data.message || 'Registration failed', 'error');
-  }
+  document.getElementById('loginResult').innerText = res.ok
+    ? `Registered: ${data.name}. You can now log in below.`
+    : (data.message || 'Registration failed');
 }
 
+// Login user
 async function loginUser() {
-  const email = document.getElementById('loginEmail').value.trim();
+  const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
 
   const res = await fetch('/login', {
@@ -359,39 +254,164 @@ async function loginUser() {
     body: JSON.stringify({ email, password })
   });
   const data = await res.json();
-  const resultEl = document.getElementById('loginResult');
-  if (res.ok) {
-    if (resultEl) resultEl.textContent = data.message;
-    setCurrentUser(data.user);
-    showToast(`Welcome back, ${data.user.name}!`);
-    setTimeout(() => { window.location.href = 'index.html'; }, 700);
-  } else {
-    if (resultEl) resultEl.textContent = data.message;
-    showToast(data.message || 'Login failed', 'error');
+  document.getElementById('loginResult').innerText = data.message;
+  if (data.user) {
+    localStorage.setItem('user', JSON.stringify(data.user));
+    updateAuthUI();
+    setTimeout(() => { window.location.href = 'services.html'; }, 600);
   }
 }
 
-// ---------- bootstrap ----------
+function logout() {
+  localStorage.removeItem('user');
+  updateAuthUI();
+  if (document.getElementById('servicesList')) loadServices();
+}
 
+// Reflect login state in the navbar + reveal the Add Place form
+function updateAuthUI() {
+  const user = currentUser();
+  const link = document.getElementById('navAuthLink');
+  if (link) {
+    if (user) {
+      link.textContent = `Logout (${user.name})`;
+      link.href = '#';
+      link.onclick = (e) => { e.preventDefault(); logout(); };
+    } else {
+      link.textContent = 'Login';
+      link.href = 'login.html';
+      link.onclick = null;
+    }
+  }
+  const addSection = document.getElementById('addPlaceSection');
+  if (addSection) addSection.style.display = user ? 'block' : 'none';
+}
+
+// Load services list (optionally sorted by distance)
+async function loadServices() {
+  const res = await fetch('/services');
+  const data = await res.json();
+  renderList(data);
+}
+
+// Add a place (requires login)
+async function addPlace() {
+  const user = currentUser();
+  if (!user) { alert('Please log in first.'); return; }
+
+  const name = document.getElementById('newName').value;
+  const type = document.getElementById('newType').value;
+  const address = document.getElementById('newAddress').value;
+  const contact = document.getElementById('newContact').value;
+  const open = document.getElementById('newOpen').value;
+  const close = document.getElementById('newClose').value;
+
+  if (!name || !address) { alert('Name and address are required.'); return; }
+
+  const res = await fetch('/services', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({
+      name, type, address, contact,
+      lat: 3.94, lng: 11.52,
+      hours: { open, close },
+      languages: ['French'],
+      services: []
+    })
+  });
+  if (res.ok) {
+    document.getElementById('newName').value = '';
+    document.getElementById('newAddress').value = '';
+    document.getElementById('newContact').value = '';
+    loadServices();
+    loadStatBar();
+  } else {
+    const data = await res.json();
+    alert(data.message || 'Could not add place.');
+  }
+}
+
+// Edit a place (requires login)
+async function editService(id) {
+  const user = currentUser();
+  if (!user) { alert('Please log in first.'); return; }
+  const res = await fetch(`/services/${id}`);
+  const s = await res.json();
+
+  const name = prompt('Name:', s.name);
+  if (name === null) return;
+  const address = prompt('Address:', s.address);
+  if (address === null) return;
+  const open = prompt('Opening time (HH:MM):', s.hours.open);
+  if (open === null) return;
+  const close = prompt('Closing time (HH:MM):', s.hours.close);
+  if (close === null) return;
+
+  const putRes = await fetch(`/services/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ name, address, hours: { open, close } })
+  });
+  if (putRes.ok) { loadServices(); }
+  else { const d = await putRes.json(); alert(d.message || 'Could not update place.'); }
+}
+
+// Delete a place (requires login)
+async function deleteService(id) {
+  const user = currentUser();
+  if (!user) { alert('Please log in first.'); return; }
+  if (!confirm('Remove this place from the directory?')) return;
+
+  const res = await fetch(`/services/${id}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() }
+  });
+  if (res.ok) { loadServices(); loadStatBar(); }
+  else { const d = await res.json(); alert(d.message || 'Could not delete place.'); }
+}
+
+// Share service
+async function shareService(serviceId) {
+  const user = currentUser();
+  if (!user) { alert('Please log in to share a place.'); return; }
+  const email = prompt('Enter email to share with:');
+  if (!email) return;
+  await fetch('/services/share', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ serviceId, sharedWith: email })
+  });
+  alert('Place shared!');
+}
+
+// Save favorite
+function saveFavorite(serviceId) {
+  let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+  if (!favorites.includes(serviceId)) {
+    favorites.push(serviceId);
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+    alert('Saved to favorites!');
+  }
+}
+
+// Load recommendations
+async function loadRecommendations() {
+  const res = await fetch('/recommendations');
+  const data = await res.json();
+  const results = document.getElementById('results');
+  if (results) {
+    results.innerHTML = '<h2>Recommended for you</h2>';
+    data.forEach(s => { results.innerHTML += renderServiceCard(s); });
+  }
+}
+
+// Init
 document.addEventListener('DOMContentLoaded', () => {
   updateAuthUI();
-
-  document.querySelectorAll('#typeChips .chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const type = chip.dataset.type;
-      document.getElementById('searchType').value = type;
-      setActiveChip(type);
-      searchServices();
-    });
-  });
-
-  if (document.getElementById('results')) {
-    setActiveChip('');
-    searchServices();
-    loadRecommendations();
-  }
-
+  loadStatBar();
   if (document.getElementById('servicesList')) {
     loadServices();
+  } else if (document.getElementById('results')) {
+    searchServices();
   }
 });
