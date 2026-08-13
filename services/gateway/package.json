@@ -1,0 +1,13 @@
+{
+  "name": "nyom-api-gateway",
+  "version": "1.0.0",
+  "description": "Nyom Locator - API Gateway (single entry point, routes to each microservice, serves the frontend)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "http-proxy-middleware": "^2.0.6"
+  }
+}

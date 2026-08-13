@@ -1,13 +1,80 @@
-version: "3.9"
+# Phase 2 - Nyom Locator as independent microservices behind an API Gateway.
+# `docker compose up --build` starts all six containers on one shared network;
+# the gateway is the only one exposed to the host, matching the "single entry
+# point" requirement from the microservices brief. Every external dependency
+# (map tiles, routing, AI) is free - no API keys, no billing.
+#
+# The AI assistant expects Ollama running natively on your machine (not in a
+# container - see README for why and how to install it), reached via Docker
+# Desktop's host.docker.internal DNS name.
+#
+# The course's original Flask scaffold (./Dockerfile, ./app) is untouched and
+# not part of this stack - see README.md.
 
 services:
-  globetrotter:
-    build: .
-    container_name: globetrotter_app
-    ports:
-      - "5000:5000"
-    # Mount local code so changes are reflected without rebuilding the image
+  user-service:
+    build: ./services/user-service
+    container_name: nyom_user_service
     volumes:
-      - .:/globetrotter
+      - user_data:/app/data
     environment:
-      - PORT=5000
+      - PORT=4001
+
+  places-service:
+    build: ./services/places-service
+    container_name: nyom_places_service
+    volumes:
+      - places_data:/app/data
+    environment:
+      - PORT=4002
+      - USER_SERVICE_URL=http://user-service:4001
+
+  recommendation-service:
+    build: ./services/recommendation-service
+    container_name: nyom_recommendation_service
+    environment:
+      - PORT=4003
+      - PLACES_SERVICE_URL=http://places-service:4002
+      - USER_SERVICE_URL=http://user-service:4001
+    depends_on:
+      - places-service
+      - user-service
+
+  assistant-service:
+    build: ./services/assistant-service
+    container_name: nyom_assistant_service
+    volumes:
+      - assistant_data:/app/data
+    environment:
+      - PORT=4004
+      - PLACES_SERVICE_URL=http://places-service:4002
+      - USER_SERVICE_URL=http://user-service:4001
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:1b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - places-service
+      - user-service
+
+  gateway:
+    build: ./services/gateway
+    container_name: nyom_gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - USER_SERVICE_URL=http://user-service:4001
+      - PLACES_SERVICE_URL=http://places-service:4002
+      - RECOMMENDATION_SERVICE_URL=http://recommendation-service:4003
+      - ASSISTANT_SERVICE_URL=http://assistant-service:4004
+    depends_on:
+      - user-service
+      - places-service
+      - recommendation-service
+      - assistant-service
+
+volumes:
+  user_data:
+  places_data:
+  assistant_data:

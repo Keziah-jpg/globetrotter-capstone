@@ -1,0 +1,17 @@
+{
+  "name": "nyom-user-service",
+  "version": "1.0.0",
+  "description": "Nyom Locator - User Service (registration, login, profiles)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  }
+}

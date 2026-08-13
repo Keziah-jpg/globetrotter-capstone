@@ -20,6 +20,7 @@ build/
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # Docker
 .dockerignore
@@ -27,6 +28,10 @@ build/
 # Data files (populated at runtime); seed data (services.json) is tracked
 data/*.json
 !data/services.json
+
+# Phase 2 microservices: each service's runtime data, except seed places.json
+services/*/data/*.json
+!services/places-service/data/places.json
 
 # IDE / editor
 .vscode/

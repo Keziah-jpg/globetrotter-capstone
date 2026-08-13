@@ -5,12 +5,22 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "jest"
+    "test": "jest",
+    "install:services": "npm install --prefix services/gateway && npm install --prefix services/user-service && npm install --prefix services/places-service && npm install --prefix services/recommendation-service && npm install --prefix services/assistant-service",
+    "dev": "concurrently -n user,places,rec,assistant,gateway -c blue,green,yellow,magenta,cyan \"npm:dev:user\" \"npm:dev:places\" \"npm:dev:recommendation\" \"npm:dev:assistant\" \"npm:dev:gateway\"",
+    "dev:user": "cross-env PORT=4001 node services/user-service/server.js",
+    "dev:places": "cross-env PORT=4002 USER_SERVICE_URL=http://localhost:4001 node services/places-service/server.js",
+    "dev:recommendation": "cross-env PORT=4003 PLACES_SERVICE_URL=http://localhost:4002 USER_SERVICE_URL=http://localhost:4001 node services/recommendation-service/server.js",
+    "dev:assistant": "cross-env PORT=4004 PLACES_SERVICE_URL=http://localhost:4002 USER_SERVICE_URL=http://localhost:4001 node services/assistant-service/server.js",
+    "dev:gateway": "cross-env PORT=3000 USER_SERVICE_URL=http://localhost:4001 PLACES_SERVICE_URL=http://localhost:4002 RECOMMENDATION_SERVICE_URL=http://localhost:4003 ASSISTANT_SERVICE_URL=http://localhost:4004 node services/gateway/server.js",
+    "test:services": "npm test --prefix services/user-service && npm test --prefix services/places-service && npm test --prefix services/recommendation-service && npm test --prefix services/assistant-service"
   },
   "dependencies": {
     "express": "^4.19.2"
   },
   "devDependencies": {
+    "concurrently": "^10.0.4",
+    "cross-env": "^10.1.0",
     "jest": "^29.7.0",
     "supertest": "^6.3.3"
   }

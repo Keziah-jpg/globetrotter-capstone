@@ -1,0 +1,644 @@
+[
+  {
+    "id": 1,
+    "name": "Nyom District Hospital",
+    "type": "hospital",
+    "address": "Nyom Main Road",
+    "lat": 3.939,
+    "lng": 11.516,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/7/7f/HOPITAL_DE_DISTRICT_DE_LOGBABA.jpg",
+    "contact": "+237 222 23 14 68",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Emergency",
+      "Maternity",
+      "Surgery",
+      "Pharmacy",
+      "Laboratory"
+    ],
+    "description": "The main public hospital serving Nyom, open around the clock. Specializes in emergency care, maternity and general surgery, with an on-site pharmacy and lab so most urgent needs are handled in one visit.",
+    "rating": 4.3,
+    "popular": true,
+    "reviews": [
+      {
+        "name": "Marie-Claire Ngo Bella",
+        "rating": 5,
+        "comment": "Ma delivery went smoothly here, the maternity staff were very attentive even at 2am.",
+        "date": "2026-05-12"
+      },
+      {
+        "name": "Bertrand Nnomo",
+        "rating": 4,
+        "comment": "Emergency room can get crowded on weekends but they always find a way to attend to you.",
+        "date": "2026-06-03"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Pharmacie Centrale Nyom",
+    "type": "pharmacy",
+    "address": "Nyom Market",
+    "lat": 3.94,
+    "lng": 11.515,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/c/c9/Pharmacie_au_Cameroun.jpg",
+    "contact": "+237 699 45 21 08",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French"
+    ],
+    "services": [
+      "Medication",
+      "Consultation",
+      "Vaccination",
+      "Pharmacie de garde (24h)"
+    ],
+    "description": "Sits right on Nyom Market, and runs as the neighborhood's rotating 24h \"pharmacie de garde\" - the one to know about for a medication emergency after normal hours.",
+    "rating": 4.6,
+    "popular": true,
+    "reviews": [
+      {
+        "name": "Serge Mballa",
+        "rating": 5,
+        "comment": "Saved me at midnight when my daughter had a fever, they were open and had everything.",
+        "date": "2026-04-20"
+      },
+      {
+        "name": "Aurélie Nkeng",
+        "rating": 4,
+        "comment": "Good stock of medication, a bit pricier than pharmacies further out but always available.",
+        "date": "2026-03-15"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "Clinique Espoir Nyom",
+    "type": "clinic",
+    "address": "Near Nyom Bus Station",
+    "lat": 3.942,
+    "lng": 11.5175,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/8/88/Laboratoire_hopital_douala.jpg",
+    "contact": "+237 654 33 87 12",
+    "hours": {
+      "open": "07:30",
+      "close": "19:00"
+    },
+    "languages": [
+      "French",
+      "English",
+      "Ewondo"
+    ],
+    "services": [
+      "General Consultation",
+      "Pediatrics",
+      "Dental Care",
+      "Laboratory"
+    ],
+    "description": "A general clinic near the bus station specializing in pediatrics and dental care, with its own small laboratory so routine tests don't need a separate trip across town.",
+    "rating": 4.1,
+    "popular": false,
+    "reviews": [
+      {
+        "name": "Christian Ndjock Essomba",
+        "rating": 4,
+        "comment": "The dentist here is gentle and explains everything before treatment.",
+        "date": "2026-02-18"
+      },
+      {
+        "name": "Larissa Abanda",
+        "rating": 4,
+        "comment": "Took my son for a check-up, pediatric staff were patient with him.",
+        "date": "2026-01-09"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Centre de Santé Nyom II",
+    "type": "clinic",
+    "address": "Nyom II Road",
+    "lat": 3.96,
+    "lng": 11.525,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/1/1b/University_Teaching_Hospital_of_Yaounde_%28CHU%29_2014_from_behind.jpg",
+    "contact": "+237 691 20 74 55",
+    "hours": {
+      "open": "08:00",
+      "close": "17:30"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Consultation",
+      "Vaccination"
+    ],
+    "description": "A government-run neighborhood health center in Nyom II handling routine consultations and the standard vaccination schedule during weekday office hours.",
+    "rating": 3.9,
+    "popular": false,
+    "reviews": [
+      {
+        "name": "Arnaud Tchoumi",
+        "rating": 4,
+        "comment": "Affordable consultation fees, staff are professional even when it's busy.",
+        "date": "2026-05-30"
+      },
+      {
+        "name": "Rosine Zambo",
+        "rating": 3,
+        "comment": "Waiting time can be long in the mornings, come early.",
+        "date": "2026-04-11"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Marché de Nyom",
+    "type": "market",
+    "address": "Nyom Main Road",
+    "lat": 3.9385,
+    "lng": 11.5165,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Spice_vendor_in_Yaounde_market.jpg",
+    "contact": "+237 675 88 41 09",
+    "hours": {
+      "open": "05:30",
+      "close": "19:30"
+    },
+    "languages": [
+      "French",
+      "English",
+      "Ewondo"
+    ],
+    "services": [
+      "Fresh Produce",
+      "Foodstuffs",
+      "Household Goods"
+    ],
+    "description": "The main market of Nyom I, busiest at sunrise when produce trucks arrive. Best known for fresh vegetables, fish and everyday household goods at neighborhood prices.",
+    "rating": 4.4,
+    "popular": true,
+    "reviews": [
+      {
+        "name": "Blessing Eyenga",
+        "rating": 5,
+        "comment": "Freshest tomatoes and okra in Nyom, I go every Saturday morning.",
+        "date": "2026-06-14"
+      },
+      {
+        "name": "Paul Onana",
+        "rating": 4,
+        "comment": "Prices are fair if you arrive early before it gets crowded.",
+        "date": "2026-05-02"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "Marché de Nyom II",
+    "type": "market",
+    "address": "Nyom II Road",
+    "lat": 3.961,
+    "lng": 11.5245,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/0/07/Cameroon_market_in_Yaound%C3%A9.jpg",
+    "contact": "+237 696 14 60 27",
+    "hours": {
+      "open": "06:00",
+      "close": "18:30"
+    },
+    "languages": [
+      "French",
+      "Ewondo"
+    ],
+    "services": [
+      "Fresh Produce",
+      "Clothing",
+      "Household Goods"
+    ],
+    "description": "The smaller sister market up in Nyom II, known more for clothing and household goods stalls than produce, serving the residents around Nyom II Road directly.",
+    "rating": 4,
+    "popular": false,
+    "reviews": [
+      {
+        "name": "Carine Mbarga",
+        "rating": 4,
+        "comment": "Good place for second-hand clothes at reasonable prices.",
+        "date": "2026-03-27"
+      },
+      {
+        "name": "Franck Belinga",
+        "rating": 4,
+        "comment": "Smaller than the main market but you can find most basics here.",
+        "date": "2026-02-05"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "name": "Commissariat Central N°1 de Yaoundé (Secteur Nyom)",
+    "type": "police",
+    "address": "Nyom Main Road",
+    "lat": 3.9375,
+    "lng": 11.514,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Yaounde_traffic_police.jpg",
+    "contact": "+237 222 23 10 45",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Emergency Response",
+      "Reporting",
+      "Community Policing"
+    ],
+    "description": "The police station covering the Nyom sector, staffed 24 hours for emergency response and incident reporting.",
+    "rating": 3.8,
+    "popular": true,
+    "reviews": [
+      {
+        "name": "Hervé Ekotto",
+        "rating": 4,
+        "comment": "Reported a theft here, the officers were responsive and followed up.",
+        "date": "2026-04-08"
+      },
+      {
+        "name": "Sandrine Owona",
+        "rating": 3,
+        "comment": "Paperwork takes time but they take reports seriously.",
+        "date": "2026-01-22"
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "name": "Brigade de Gendarmerie de Nyom II",
+    "type": "police",
+    "address": "Nyom II Road",
+    "lat": 3.9615,
+    "lng": 11.526,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/b/bf/PoliceCamerounaise25.jpg",
+    "contact": "+237 222 23 55 89",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Emergency Response",
+      "Patrols",
+      "Community Policing"
+    ],
+    "description": "The gendarmerie brigade covering Nyom II, running regular patrols through the neighborhood and available around the clock.",
+    "rating": 3.7,
+    "popular": false,
+    "reviews": [
+      {
+        "name": "Yannick Bikoro",
+        "rating": 4,
+        "comment": "Patrol presence has improved in the area recently.",
+        "date": "2026-05-19"
+      },
+      {
+        "name": "Nadège Essiane",
+        "rating": 3,
+        "comment": "Straightforward process to file a report.",
+        "date": "2026-03-02"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "name": "Paroisse Saint-Pierre de Nyom II",
+    "type": "church",
+    "address": "Nyom II Road",
+    "lat": 3.9762299,
+    "lng": 11.517179,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/a/a0/Cath%C3%A9drale_Notre_Dame_Des_Vistoires_de_Yaound%C3%A9.jpg",
+    "contact": "+237 674 56 32 90",
+    "hours": {
+      "open": "06:30",
+      "close": "18:30"
+    },
+    "languages": [
+      "French",
+      "Ewondo"
+    ],
+    "services": [
+      "Mass",
+      "Confession",
+      "Community Outreach"
+    ],
+    "description": "The Catholic parish of Nyom II, holding daily mass and confession, and known locally for its community outreach programs.",
+    "rating": 4.8,
+    "popular": true,
+    "reviews": [
+      {
+        "name": "Patrice Meka",
+        "rating": 5,
+        "comment": "Warm community, the Sunday choir is beautiful.",
+        "date": "2026-06-01"
+      },
+      {
+        "name": "Cynthia Manga",
+        "rating": 5,
+        "comment": "The outreach program helped my family, very grateful.",
+        "date": "2026-02-14"
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "name": "Église Presbytérienne Camerounaise de Nyom",
+    "type": "church",
+    "address": "Nyom Main Road",
+    "lat": 3.9395,
+    "lng": 11.5145,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Yaound%C3%A9_Cath%C3%A9drale.jpg",
+    "contact": "+237 690 77 15 42",
+    "hours": {
+      "open": "06:00",
+      "close": "18:00"
+    },
+    "languages": [
+      "French",
+      "English",
+      "Ewondo"
+    ],
+    "services": [
+      "Worship Service",
+      "Bible Study",
+      "Community Outreach"
+    ],
+    "description": "The Presbyterian church on Nyom Main Road, running weekly Bible study groups alongside Sunday worship and community outreach.",
+    "rating": 4.5,
+    "popular": false,
+    "reviews": [
+      {
+        "name": "Divine Ateba",
+        "rating": 5,
+        "comment": "Bible study group here is welcoming to newcomers.",
+        "date": "2026-04-27"
+      },
+      {
+        "name": "Jean-Paul Fotso",
+        "rating": 4,
+        "comment": "Good sermons, the congregation is friendly.",
+        "date": "2026-01-30"
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "name": "Melrose Place Hôtel",
+    "type": "hotel",
+    "address": "Rue 5.501, Nyom I (off Nyom Main Road)",
+    "lat": 3.9421209,
+    "lng": 11.5190042,
+    "contact": "+237 222 20 45 61",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Reception (24h)",
+      "Restaurant",
+      "Wi-Fi",
+      "Secure Parking"
+    ],
+    "description": "A real, locally-run hotel a few minutes' walk from Nyom Main Road - reception staffed around the clock, with an in-house restaurant for guests who don't want to go looking for dinner after dark.",
+    "rating": 4,
+    "popular": true,
+    "reviews": [
+      {
+        "name": "Ismaël Ngo Bella",
+        "rating": 4,
+        "comment": "Quiet, clean rooms and the front desk is helpful with directions around Nyom.",
+        "date": "2026-05-08"
+      },
+      {
+        "name": "Odile Tsafack",
+        "rating": 4,
+        "comment": "Good value for the area, close enough to walk to the market.",
+        "date": "2026-03-21"
+      }
+    ]
+  },
+  {
+    "id": 12,
+    "name": "Hôtel Tehasselois",
+    "type": "hotel",
+    "address": "Route N1, Émana / Nyom border",
+    "lat": 3.9452989,
+    "lng": 11.5132328,
+    "contact": "+237 222 21 33 04",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Reception (24h)",
+      "Conference Room",
+      "Wi-Fi"
+    ],
+    "description": "Sits right on the N1 at the Émana/Nyom border, about a kilometer from Nyom Main Road - a practical option if you need a conference room as well as a bed.",
+    "rating": 3.8,
+    "popular": false,
+    "reviews": [
+      {
+        "name": "Guy Ndifor",
+        "rating": 4,
+        "comment": "Held a small business meeting in their conference room, worked well.",
+        "date": "2026-02-11"
+      },
+      {
+        "name": "Estelle Njiké",
+        "rating": 3,
+        "comment": "Basic but reliable, Wi-Fi could be faster.",
+        "date": "2026-01-16"
+      }
+    ]
+  },
+  {
+    "id": 13,
+    "name": "Total Okolo",
+    "type": "fuel",
+    "address": "Nyom Main Road, near Okolo junction",
+    "lat": 3.9411128,
+    "lng": 11.5182432,
+    "image": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Total_Petrol_Station_Douala.jpg",
+    "contact": "+237 222 22 10 00",
+    "hours": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Petrol",
+      "Diesel",
+      "Air/Water",
+      "Convenience Shop"
+    ],
+    "description": "TotalEnergies station right on Nyom Main Road, open 24 hours. Photo shown is a representative TotalEnergies station (same chain) rather than this exact pump.",
+    "rating": 4.2,
+    "popular": true,
+    "reviews": [
+      {
+        "name": "Achille Kamdem",
+        "rating": 4,
+        "comment": "Never run out of fuel here even when other stations in town do.",
+        "date": "2026-06-09"
+      },
+      {
+        "name": "Florence Assam",
+        "rating": 4,
+        "comment": "Convenient location, staff are quick.",
+        "date": "2026-04-02"
+      }
+    ]
+  },
+  {
+    "id": 14,
+    "name": "Neptune Oil Nyom",
+    "type": "fuel",
+    "address": "Nyom Main Road, near the church junction",
+    "lat": 3.9452822,
+    "lng": 11.5154356,
+    "contact": "+237 222 22 44 18",
+    "hours": {
+      "open": "05:00",
+      "close": "23:00"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Petrol",
+      "Diesel",
+      "Air/Water"
+    ],
+    "description": "A Neptune Oil station a short walk from Nyom's church junction - the second real fuel option in the neighborhood alongside Total Okolo.",
+    "rating": 3.9,
+    "popular": false,
+    "reviews": [
+      {
+        "name": "Brice Talla",
+        "rating": 4,
+        "comment": "Good alternative when the queue at Total is long.",
+        "date": "2026-03-30"
+      },
+      {
+        "name": "Gisèle Fouda",
+        "rating": 4,
+        "comment": "Fair prices, no issues fueling up here.",
+        "date": "2026-02-22"
+      }
+    ]
+  },
+  {
+    "id": 15,
+    "name": "Yaoundé Club",
+    "type": "recreation",
+    "address": "Nyom I, off Nyom Main Road",
+    "lat": 3.9357295,
+    "lng": 11.5214488,
+    "contact": "+237 222 20 60 77",
+    "hours": {
+      "open": "07:00",
+      "close": "22:00"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Sports Grounds",
+      "Fitness",
+      "Social Club Events"
+    ],
+    "description": "A real sports and social club right in Nyom I - the neighborhood's main recreation ground for anyone wanting exercise or a weekend social event without leaving Nyom.",
+    "rating": 4.1,
+    "popular": true,
+    "reviews": [
+      {
+        "name": "Steve Mbezele",
+        "rating": 4,
+        "comment": "Good grounds, I come here to play with friends most weekends.",
+        "date": "2026-05-25"
+      },
+      {
+        "name": "Priscille Ondoa",
+        "rating": 4,
+        "comment": "Nice atmosphere for club events, well maintained.",
+        "date": "2026-04-14"
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "name": "CCA (Crédit Communautaire d'Afrique) - Agence Nyom",
+    "type": "bank",
+    "address": "Nyom Main Road",
+    "lat": 3.9420205,
+    "lng": 11.5188759,
+    "contact": "+237 222 22 60 33",
+    "hours": {
+      "open": "08:00",
+      "close": "15:30"
+    },
+    "languages": [
+      "French",
+      "English"
+    ],
+    "services": [
+      "Deposits & Withdrawals",
+      "Money Transfer",
+      "ATM (24h)"
+    ],
+    "description": "A real microfinance bank branch about half a kilometer into Nyom I, confirmed via OpenStreetMap. Closes mid-afternoon on weekdays like most Cameroonian bank branches, though its ATM stays available 24h.",
+    "rating": 3.9,
+    "popular": true,
+    "reviews": [
+      {
+        "name": "Achille Nkolo",
+        "rating": 4,
+        "comment": "Reliable for transfers, queue moves faster than the bigger banks downtown.",
+        "date": "2026-05-17"
+      },
+      {
+        "name": "Solange Mengue",
+        "rating": 4,
+        "comment": "ATM here has saved me more than once on a weekend.",
+        "date": "2026-03-09"
+      }
+    ]
+  }
+]
