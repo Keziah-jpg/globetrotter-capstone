@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Nyom Locator</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg app-navbar sticky-top" data-bs-theme="dark">
+    <div class="container-fluid" style="max-width:1200px;margin:0 auto;">
+      <a class="navbar-brand" href="index.html"><span class="brand-mark"><i class="fa-solid fa-map-location-dot"></i></span> Nyom Locator <span class="tag">Yaoundé</span></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link active" href="index.html">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="services.html">Places</a></li>
+          <li class="nav-item"><a class="nav-link" href="map.html">Map</a></li>
+          <li class="nav-item"><a class="nav-link" href="my-places.html">My Places</a></li>
+          <li class="nav-item"><a class="nav-link" href="login.html" id="navAuthLink">Login</a></li>
+        </ul>
+        <span id="gpsStatus" class="unknown"><i class="fa-solid fa-satellite-dish"></i> Locating…</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="app-main">
+    <section class="hero">
+      <div class="hero-inner">
+        <span class="eyebrow">Yaoundé &middot; Nyom neighborhood</span>
+        <h1>Every essential place in Nyom, at a glance.</h1>
+        <p>Hospitals, clinics, pharmacies, markets, police stations, churches, hotels, fuel stations and recreation spots &mdash; searchable, mapped with real GPS, and a click away from directions.</p>
+        <div class="hero-actions">
+          <a href="map.html" class="btn btn-app-clay"><i class="fa-solid fa-map-location-dot"></i> Explore the map</a>
+          <a href="#askInput" class="btn btn-app" style="background:rgba(255,255,255,0.16);" onclick="document.getElementById('askInput').focus()"><i class="fa-solid fa-robot"></i> Ask the assistant</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="statBar" class="stat-bar"></section>
+
+    <section class="panel assistant">
+      <h2><i class="fa-solid fa-robot"></i> Ask Nyom Locator</h2>
+      <div id="assistantHistory" class="assistant-history"></div>
+      <div class="d-flex gap-2 flex-wrap">
+        <input type="text" id="askInput" class="form-control" style="max-width:520px" placeholder='Try: "nearest hospital", "pharmacy open now"...' onkeydown="if(event.key==='Enter')askAssistant()">
+        <button class="btn btn-app-accent" onclick="askAssistant()"><i class="fa-solid fa-paper-plane"></i> Ask</button>
+      </div>
+      <div id="assistantReply" class="assistant-reply"></div>
+      <p class="text-muted small mt-2 mb-0" id="assistantHint"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Find Places in Nyom</h2>
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+        <input type="text" id="searchName" class="form-control" style="max-width:260px" placeholder="Search by name, type or area...">
+        <select id="searchType" class="form-select" style="max-width:180px">
+          <option value="">All Types</option>
+          <option value="hospital">Hospital</option>
+          <option value="clinic">Clinic</option>
+          <option value="pharmacy">Pharmacy</option>
+          <option value="market">Market</option>
+          <option value="police">Police Station</option>
+          <option value="church">Church</option>
+          <option value="hotel">Hotel</option>
+          <option value="restaurant">Restaurant</option>
+          <option value="fuel">Fuel Station</option>
+          <option value="recreation">Recreation</option>
+          <option value="bank">Bank</option>
+        </select>
+        <select id="searchLanguage" class="form-select" style="max-width:160px">
+          <option value="">Any Language</option>
+          <option value="French">French</option>
+          <option value="English">English</option>
+          <option value="Ewondo">Ewondo</option>
+        </select>
+        <button class="btn btn-app" onclick="searchServices()"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+        <button class="btn btn-app-accent" onclick="findNearMe()"><i class="fa-solid fa-location-crosshairs"></i> Near Me</button>
+      </div>
+    </section>
+
+    <section id="results" class="card-grid"></section>
+  </main>
+
+  <footer class="app-footer">Nyom Locator &mdash; capstone project, health services, markets, police, churches, hotels, restaurants, fuel &amp; recreation in Nyom, Yaoundé.</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

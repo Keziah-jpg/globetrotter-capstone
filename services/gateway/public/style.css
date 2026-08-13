@@ -1,0 +1,313 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --navy: #0b2545;
+  --navy-dark: #071a33;
+  --slate: #475569;
+  --slate-light: #64748b;
+  --border: #e7e0d3;
+  --bg: #faf7f1;
+  --surface: #ffffff;
+  --accent: #0f766e;
+  --accent-dark: #0c5d56;
+  --clay: #c2703d;
+  --clay-dark: #a35a2f;
+  --danger: #b91c1c;
+
+  --hospital: #b91c1c;
+  --clinic: #b45309;
+  --pharmacy: #0f766e;
+  --market: #a16207;
+  --police: #1d4ed8;
+  --church: #6d28d9;
+  --hotel: #be185d;
+  --restaurant: #c2410c;
+  --fuel: #065f46;
+  --recreation: #0891b2;
+  --bank: #0d9488;
+  --ink: #1c1917;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Work Sans', -apple-system, sans-serif;
+
+  --shadow-sm: 0 1px 2px rgba(28,25,23,0.05);
+  --shadow-md: 0 8px 24px rgba(28,25,23,0.08);
+  --shadow-lg: 0 20px 50px rgba(11,37,69,0.16);
+  --radius: 14px;
+
+  /* Re-theme Bootstrap to match the app's palette instead of the default blue */
+  --bs-primary: var(--navy);
+  --bs-primary-rgb: 11, 37, 69;
+  --bs-body-font-family: var(--font-body);
+  --bs-body-color: var(--ink);
+  --bs-body-bg: var(--bg);
+  --bs-border-radius: 10px;
+}
+
+body { -webkit-font-smoothing: antialiased; }
+
+h1, h2, h3, .display-font { font-family: var(--font-display); letter-spacing: -0.01em; }
+
+/* ---------- Navbar ---------- */
+.navbar.app-navbar {
+  background: linear-gradient(180deg, var(--navy) 0%, #0d2c52 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 2px 16px rgba(7,26,51,0.25);
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+.app-navbar .navbar-brand {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.app-navbar .brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--clay));
+  color: #fff;
+  font-size: 0.95rem;
+  box-shadow: var(--shadow-sm);
+}
+.app-navbar .nav-link {
+  color: rgba(255,255,255,0.75);
+  font-weight: 500;
+  position: relative;
+  padding: 0.5rem 0.9rem !important;
+  transition: color 0.15s;
+}
+.app-navbar .nav-link.active, .app-navbar .nav-link:hover { color: #fff; }
+.app-navbar .nav-link.active::after {
+  content: '';
+  position: absolute;
+  left: 0.9rem; right: 0.9rem; bottom: 0.15rem;
+  height: 2px;
+  background: var(--clay);
+  border-radius: 2px;
+}
+.app-navbar .tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+/* GPS / geofence live status chip */
+#gpsStatus {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+#gpsStatus.inside { background: #dcfce7; color: #15803d; }
+#gpsStatus.outside { background: #fef3c7; color: #92400e; }
+#gpsStatus.unknown { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75); }
+
+main.app-main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+/* ---------- Hero (home page) ---------- */
+.hero {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 1.75rem;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  color: #fff;
+  background: linear-gradient(120deg, rgba(11,37,69,0.92), rgba(15,118,110,0.82)),
+              url('https://upload.wikimedia.org/wikipedia/commons/7/7f/Spice_vendor_in_Yaounde_market.jpg') center/cover;
+  box-shadow: var(--shadow-lg);
+}
+.hero-inner { padding: 2.75rem 2.5rem; max-width: 640px; }
+.hero .eyebrow {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.4px;
+  color: #fde68a; margin-bottom: 0.6rem; display: block;
+}
+.hero h1 { font-size: clamp(1.7rem, 4vw, 2.6rem); font-weight: 600; margin-bottom: 0.75rem; line-height: 1.15; }
+.hero p { opacity: 0.92; font-size: 1rem; margin-bottom: 1.4rem; max-width: 520px; }
+.hero .hero-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+@media (max-width: 576px) { .hero-inner { padding: 2rem 1.5rem; } }
+
+/* Stat bar */
+.stat-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 0 0 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.stat-tile { background: var(--surface); padding: 1rem 1.15rem; }
+.stat-tile .num { font-family: var(--font-display); font-size: 1.7rem; font-weight: 600; color: var(--navy); line-height: 1.1; }
+.stat-tile .label { font-size: 0.7rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-top: 0.3rem; }
+
+/* Panels */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem 1.6rem; margin: 0 0 1.5rem; box-shadow: var(--shadow-sm); }
+.panel h2 { font-size: 1.05rem; font-weight: 600; color: var(--navy); margin: 0 0 1rem; letter-spacing: 0; text-transform: none; }
+.panel.assistant { border: 1px solid #bae6fd; background: linear-gradient(180deg, #f0f9ff, #ffffff); }
+.panel.assistant h2 { color: #0369a1; }
+
+.assistant-reply { margin-top: 0.9rem; font-size: 0.9rem; color: var(--navy); background: #fff; border: 1px solid #bae6fd; border-radius: 10px; padding: 0.75rem 0.95rem; }
+.assistant-reply:empty { display: none; }
+.assistant-history { max-height: 260px; overflow-y: auto; margin-top: 0.9rem; }
+.chat-bubble { border-radius: 12px; padding: 0.6rem 0.9rem; margin-bottom: 0.5rem; font-size: 0.86rem; max-width: 85%; animation: fadeIn 0.25s ease both; }
+.chat-bubble.user { background: var(--navy); color: #fff; margin-left: auto; border-bottom-right-radius: 3px; }
+.chat-bubble.assistant { background: #fff; border: 1px solid #bae6fd; color: var(--ink); border-bottom-left-radius: 3px; }
+.place-chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; font-weight: 600; background: #e0f2fe; color: #0369a1; border-radius: 999px; padding: 0.3rem 0.7rem; margin: 0.25rem 0.35rem 0 0; text-decoration: none; transition: background 0.15s, transform 0.15s; }
+.place-chip:hover { background: #bae6fd; color: #075985; transform: translateY(-1px); }
+
+/* Buttons - keep the navy/accent/clay look on top of Bootstrap's btn base */
+.btn { border-radius: 9px; font-weight: 600; transition: transform 0.12s, box-shadow 0.12s, background 0.15s; }
+.btn:active { transform: translateY(1px); }
+.btn-app { background: var(--navy); color: #fff; border: none; }
+.btn-app:hover { background: var(--navy-dark); color: #fff; box-shadow: 0 4px 12px rgba(11,37,69,0.25); }
+.btn-app-accent { background: var(--accent); color: #fff; border: none; }
+.btn-app-accent:hover { background: var(--accent-dark); color: #fff; box-shadow: 0 4px 12px rgba(15,118,110,0.3); }
+.btn-app-clay { background: var(--clay); color: #fff; border: none; }
+.btn-app-clay:hover { background: var(--clay-dark); color: #fff; box-shadow: 0 4px 12px rgba(194,112,61,0.35); }
+
+/* Cards */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
+.card.place-card { position: relative; border: 1px solid var(--border); border-left: 4px solid var(--clinic); border-radius: var(--radius); box-shadow: var(--shadow-sm); transition: box-shadow 0.2s, transform 0.2s; overflow: hidden; }
+.card.place-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
+.card.place-card[data-type="hospital"] { border-left-color: var(--hospital); }
+.card.place-card[data-type="clinic"] { border-left-color: var(--clinic); }
+.card.place-card[data-type="pharmacy"] { border-left-color: var(--pharmacy); }
+.card.place-card[data-type="market"] { border-left-color: var(--market); }
+.card.place-card[data-type="police"] { border-left-color: var(--police); }
+.card.place-card[data-type="church"] { border-left-color: var(--church); }
+.card.place-card[data-type="hotel"] { border-left-color: var(--hotel); }
+.card.place-card[data-type="restaurant"] { border-left-color: var(--restaurant); }
+.card.place-card[data-type="fuel"] { border-left-color: var(--fuel); }
+.card.place-card[data-type="recreation"] { border-left-color: var(--recreation); }
+.card.place-card[data-type="bank"] { border-left-color: var(--bank); }
+.card-photo { display: block; width: 100%; height: 155px; object-fit: cover; background: var(--bg); }
+.card.place-card h3 { font-family: var(--font-display); font-weight: 600; }
+
+.badge-type { text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; border-radius: 6px; }
+.badge-type[data-type="hospital"] { background: var(--hospital) !important; }
+.badge-type[data-type="clinic"] { background: var(--clinic) !important; }
+.badge-type[data-type="pharmacy"] { background: var(--pharmacy) !important; }
+.badge-type[data-type="market"] { background: var(--market) !important; }
+.badge-type[data-type="police"] { background: var(--police) !important; }
+.badge-type[data-type="church"] { background: var(--church) !important; }
+.badge-type[data-type="hotel"] { background: var(--hotel) !important; }
+.badge-type[data-type="restaurant"] { background: var(--restaurant) !important; }
+.badge-type[data-type="fuel"] { background: var(--fuel) !important; }
+.badge-type[data-type="recreation"] { background: var(--recreation) !important; }
+.badge-type[data-type="bank"] { background: var(--bank) !important; }
+
+.status-chip { font-size: 0.68rem; font-weight: 700; padding: 0.22rem 0.6rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px; }
+.status-chip.open { background: #dcfce7; color: #15803d; }
+.status-chip.closed { background: #fee2e2; color: #b91c1c; }
+.distance-chip { font-size: 0.68rem; font-weight: 700; padding: 0.22rem 0.6rem; border-radius: 999px; background: #e0f2fe; color: #0369a1; margin-left: 0.4rem; }
+
+.rating { color: #d97706; font-size: 0.85rem; font-weight: 600; }
+.rating .far-empty { color: #d1d5db; }
+.rating .score { color: var(--slate); font-weight: 500; margin-left: 0.25rem; }
+
+.fade-in { animation: fadeIn 0.4s ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Inputs */
+.form-control, .form-select { border-radius: 8px; border-color: var(--border); }
+.form-control:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,118,110,0.12); }
+
+/* ---------- Login page ---------- */
+.auth-wrap { max-width: 1040px; margin: 1.5rem auto; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-lg); animation: fadeIn 0.5s ease both; }
+.auth-visual {
+  position: relative;
+  min-height: 480px;
+  color: #fff;
+  padding: 3rem 2.75rem;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  background: linear-gradient(180deg, rgba(11,37,69,0.35) 0%, rgba(7,26,51,0.92) 88%),
+              url('https://upload.wikimedia.org/wikipedia/commons/a/a0/Cath%C3%A9drale_Notre_Dame_Des_Vistoires_de_Yaound%C3%A9.jpg') center/cover;
+}
+.auth-visual .eyebrow { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.4px; color: #fde68a; margin-bottom: 0.7rem; }
+.auth-visual h2 { font-family: var(--font-display); font-size: 2rem; font-weight: 600; margin: 0 0 0.9rem; line-height: 1.2; }
+.auth-visual p { opacity: 0.88; line-height: 1.65; font-size: 0.94rem; }
+.auth-visual .chip-list { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.4rem; }
+.auth-visual .chip { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22); backdrop-filter: blur(6px); padding: 0.4rem 0.85rem; border-radius: 999px; font-size: 0.78rem; font-weight: 500; }
+
+.auth-panel { background: var(--surface); padding: 2.75rem; display: flex; flex-direction: column; justify-content: center; gap: 1.6rem; }
+.auth-panel h2 { font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; margin-bottom: 0.9rem; }
+.auth-panel .form-control { padding: 0.65rem 0.9rem; margin-bottom: 0.6rem; }
+.auth-panel .btn { padding: 0.65rem; margin-top: 0.4rem; }
+.auth-divider { display: flex; align-items: center; gap: 0.8rem; color: var(--slate-light); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+#loginResult { font-weight: 600; font-size: 0.88rem; color: var(--accent); min-height: 1.2em; }
+
+/* ---------- Place detail page ---------- */
+.place-hero {
+  border-radius: 20px;
+  min-height: 260px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.place-hero-inner { padding: 2rem 2.25rem; }
+.place-hero-inner h1 { font-size: clamp(1.5rem, 3.5vw, 2.2rem); font-weight: 600; margin: 0.4rem 0 0.5rem; }
+.place-hero-meta { display: flex; align-items: center; font-size: 0.9rem; }
+.place-hero-meta .rating { color: #fde68a; }
+.place-hero-meta .rating .far-empty { color: rgba(255,255,255,0.35); }
+.place-hero-meta .rating .score { color: rgba(255,255,255,0.85); }
+
+.pill-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.pill { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 0.35rem 0.85rem; font-size: 0.82rem; color: var(--slate); }
+
+.review-card { border-bottom: 1px solid var(--border); padding: 0.9rem 0; }
+.review-card:last-child { border-bottom: none; padding-bottom: 0; }
+.review-card:first-child { padding-top: 0; }
+.review-card .rating { font-size: 0.78rem; margin-top: 0.15rem; }
+
+/* ---------- My Places page ---------- */
+.my-places-list .card.place-card { margin-bottom: 1rem; }
+.visited-date { font-size: 0.72rem; color: var(--slate-light); }
+
+/* ---------- Map page (Leaflet + OpenStreetMap) ---------- */
+#mapContainer { width: 100%; height: min(70vh, 620px); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.leaflet-popup-content-wrapper { padding: 0; border-radius: 12px; overflow: hidden; font-family: var(--font-body); box-shadow: var(--shadow-md); }
+.leaflet-popup-content { margin: 0; width: 220px !important; }
+.map-popup img { width: 100%; height: 110px; object-fit: cover; display: block; }
+.map-popup .body { padding: 0.7rem 0.85rem; }
+.map-popup h4 { font-family: var(--font-display); font-size: 0.98rem; margin: 0 0 0.3rem; }
+.map-popup p { font-size: 0.78rem; color: var(--slate); margin: 0.15rem 0; }
+
+.leaflet-tooltip.place-label {
+  background: #fff; border: none; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.15);
+  font-size: 11px; font-weight: 600; padding: 1px 6px; color: var(--ink);
+}
+.leaflet-tooltip.place-label::before { display: none; }
+
+.directions-panel { max-height: 300px; overflow-y: auto; }
+.direction-step { padding: 0.55rem 0.7rem; border-radius: 9px; font-size: 0.85rem; margin-bottom: 0.35rem; background: #fff; border: 1px solid var(--border); transition: border-color 0.15s, background 0.15s; }
+.direction-step.active { border-color: var(--accent); background: #f0fdfa; font-weight: 600; }
+
+footer.app-footer { text-align: center; padding: 1.75rem; color: var(--slate-light); font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 1rem; }
