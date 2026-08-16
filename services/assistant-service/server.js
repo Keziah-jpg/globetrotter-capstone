@@ -4,8 +4,16 @@ const path = require('path');
 
 const app = express();
 const CHATS_FILE = path.join(__dirname, 'data', 'chats.json');
-const PLACES_SERVICE_URL = process.env.PLACES_SERVICE_URL || 'http://localhost:4002';
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:4001';
+
+// Render's private-network "hostport" reference gives just "host:port" with no
+// protocol, while Docker Compose env vars are already a full "http://host:port" -
+// normalize so the same code works unchanged on both.
+function withProtocol(url) {
+  return url.includes('://') ? url : `http://${url}`;
+}
+
+const PLACES_SERVICE_URL = withProtocol(process.env.PLACES_SERVICE_URL || 'http://localhost:4002');
+const USER_SERVICE_URL = withProtocol(process.env.USER_SERVICE_URL || 'http://localhost:4001');
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:1b';
 

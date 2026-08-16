@@ -5,7 +5,15 @@ const path = require('path');
 const app = express();
 const PLACES_FILE = path.join(__dirname, 'data', 'places.json');
 const SHARES_FILE = path.join(__dirname, 'data', 'shares.json');
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:4001';
+
+// Render's private-network "hostport" reference gives just "host:port" with no
+// protocol, while Docker Compose env vars are already a full "http://host:port" -
+// normalize so the same code works unchanged on both.
+function withProtocol(url) {
+  return url.includes('://') ? url : `http://${url}`;
+}
+
+const USER_SERVICE_URL = withProtocol(process.env.USER_SERVICE_URL || 'http://localhost:4001');
 
 // Nyom, Yaoundé - real-world geofence used by the frontend to tell a user
 // whether their live GPS position is inside Nyom or not.
