@@ -89,6 +89,7 @@ function renderServiceCard(s) {
         <div class="d-flex flex-wrap gap-2">
           <a href="place.html?id=${s.id}" class="btn btn-sm btn-app-clay"><i class="fa-solid fa-circle-info"></i> Details</a>
           <a href="map.html?place=${s.id}" class="btn btn-sm btn-app"><i class="fa-solid fa-map"></i> Map</a>
+          <a href="${yangoBookingUrl(s.lat, s.lng)}" target="_blank" rel="noopener" class="btn btn-sm" style="background:#ff2b04;color:#fff;"><i class="fa-solid fa-car-side"></i> Ride</a>
           <button class="btn btn-sm btn-outline-secondary" data-name="${s.name}" onclick="shareService(${s.id}, this)"><i class="fa-solid fa-share"></i> Share</button>
           <button class="btn btn-sm ${saved ? 'btn-app-accent' : 'btn-outline-secondary'}" onclick="saveFavorite(${s.id}, this)"><i class="fa-${saved ? 'solid' : 'regular'} fa-heart"></i> ${saved ? 'Saved' : 'Save'}</button>
           ${ownerActions}
@@ -416,8 +417,21 @@ async function updateGpsStatus(lat, lng) {
   chip.innerHTML = inside
     ? `<i class="fa-solid fa-circle-check"></i> You're in Nyom`
     : `<i class="fa-solid fa-route"></i> ${distanceKm} km from Nyom`;
+  window.__lastKnownPosition = { lat, lng };
   document.dispatchEvent(new CustomEvent('nyom:position', { detail: { lat, lng, distanceKm, inside } }));
   if (inside) checkNearbyPlacesForVisit(lat, lng);
+}
+
+// Real ride booking: hands off to Yango's actual Cameroon booking page (yango.com/en_cm)
+// rather than building any booking flow ourselves - pre-fills pickup (from the user's
+// live location, if we have it) and destination, verified working via the gfrom/gto
+// query params Yandex/Yango document for their web ordering page.
+function yangoBookingUrl(destLat, destLng) {
+  const params = new URLSearchParams();
+  const pos = window.__lastKnownPosition;
+  if (pos) params.set('gfrom', `${pos.lng},${pos.lat}`);
+  params.set('gto', `${destLng},${destLat}`);
+  return `https://yango.com/en_cm/order/?${params.toString()}`;
 }
 
 // Automatic "visited" tracking: when a logged-in user's live GPS comes within ~150m

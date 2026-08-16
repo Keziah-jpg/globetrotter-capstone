@@ -44,8 +44,22 @@ function buildPopupHtml(place) {
             <i class="fa-solid fa-circle-info"></i> Details
           </a>
         </div>
+        <a class="btn btn-sm w-100 mt-1" style="background:#ff2b04;color:#fff;" target="_blank" rel="noopener" href="${yangoBookingUrl(place.lat, place.lng)}">
+          <i class="fa-solid fa-car-side"></i> Book a ride with Yango
+        </a>
       </div>
     </div>`;
+}
+
+// Small hover-only preview (photo + name), separate from the click popup above so
+// hovering doesn't fight with a popup the user deliberately clicked open. Leaflet
+// tooltips only show one thing at a time per marker, and we already use one for the
+// permanent name label, so this is a second, non-permanent tooltip bound the same way.
+function buildHoverPreviewHtml(place) {
+  const photo = place.image
+    ? `<img src="${place.image}" alt="${place.name}" onerror="this.style.display='none'">`
+    : `<div class="hover-preview-noimg"><i class="fa-solid fa-image"></i></div>`;
+  return `<div class="hover-preview">${photo}<div class="hover-preview-name">${place.name}</div></div>`;
 }
 
 // Small, muted context markers for real nearby OpenStreetMap places (not part of
@@ -75,12 +89,27 @@ async function initMap() {
   const places = await res.json();
   window.__places = places;
 
+  let hoverPreview = null;
   places.forEach(place => {
     if (place.lat == null || place.lng == null) return;
-    L.marker([place.lat, place.lng], { icon: dotIcon(place.type) })
+    const marker = L.marker([place.lat, place.lng], { icon: dotIcon(place.type) })
       .addTo(map)
       .bindPopup(buildPopupHtml(place), { maxWidth: 240 })
       .bindTooltip(place.name, { permanent: true, direction: 'right', offset: [8, 0], className: 'place-label' });
+
+    // Hover shows a quick photo preview; click keeps the full popup (details + actions)
+    // above - these are two independent tooltips so hovering never closes a popup
+    // the user deliberately clicked open.
+    marker.on('mouseover', () => {
+      if (hoverPreview) map.closeTooltip(hoverPreview);
+      hoverPreview = L.tooltip({ direction: 'top', offset: [0, -12], className: 'hover-preview-tooltip', interactive: false })
+        .setLatLng([place.lat, place.lng])
+        .setContent(buildHoverPreviewHtml(place))
+        .openOn(map);
+    });
+    marker.on('mouseout', () => {
+      if (hoverPreview) { map.closeTooltip(hoverPreview); hoverPreview = null; }
+    });
   });
 
   loadNearbyContext(); // non-blocking - map is already usable without it

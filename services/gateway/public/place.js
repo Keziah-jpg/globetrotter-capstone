@@ -69,6 +69,9 @@ function renderPlace(p) {
         <div class="panel">
           <h2>Actions</h2>
           <a href="map.html?place=${p.id}" class="btn btn-app-clay w-100 mb-2"><i class="fa-solid fa-route"></i> Get directions from where you are</a>
+          <a href="${yangoBookingUrl(p.lat, p.lng)}" target="_blank" rel="noopener" class="btn w-100 mb-2" style="background:#ff2b04;color:#fff;">
+            <i class="fa-solid fa-car-side"></i> Book a ride with Yango
+          </a>
           <button id="saveBtn" class="btn btn-outline-secondary w-100 mb-2" onclick="toggleSave()"><i class="fa-regular fa-heart"></i> Save</button>
           <button id="shareBtn" class="btn btn-outline-secondary w-100 mb-2" onclick="sharePlace()"><i class="fa-solid fa-share"></i> Share</button>
           <button id="visitedBtn" class="btn btn-outline-secondary w-100" onclick="markVisited()"><i class="fa-regular fa-circle-check"></i> Mark as visited</button>
