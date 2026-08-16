@@ -1,0 +1,112 @@
+# Render Blueprint - deploys the Phase 2 microservices as 5 separate Render Web
+# Services on the free plan, wired together over Render's private network the
+# same way docker-compose.yml wires them together locally.
+#
+# Free-tier limitations, disclosed rather than hidden (see README "Deploying to
+# Render" section for the full explanation):
+#   - No private-only services on the free plan, so every service below gets its
+#     own public *.onrender.com URL, not just the gateway. The gateway is still
+#     the intended single entry point for the frontend.
+#   - No persistent disks on the free plan: user accounts, favorites, visited
+#     history and chat history reset on every deploy/restart. The seed places
+#     directory does NOT reset (it's baked into the image at build time).
+#   - The AI assistant has nothing to talk to here (Ollama isn't deployed - it
+#     needs more RAM/disk than a free instance gives you) - /assistant/ask will
+#     return the same "not reachable" 503 it already returns locally when Ollama
+#     isn't running. Every other feature works normally.
+#   - Free services spin down after 15 minutes of inactivity and take ~30-60s to
+#     wake back up on the next request.
+
+services:
+  - name: nyom-user-service
+    type: web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/user-service/Dockerfile
+    dockerContext: ./services/user-service
+    healthCheckPath: /health
+
+  - name: nyom-places-service
+    type: web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/places-service/Dockerfile
+    dockerContext: ./services/places-service
+    healthCheckPath: /health
+    envVars:
+      - key: USER_SERVICE_URL
+        fromService:
+          name: nyom-user-service
+          type: web
+          property: hostport
+
+  - name: nyom-recommendation-service
+    type: web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/recommendation-service/Dockerfile
+    dockerContext: ./services/recommendation-service
+    healthCheckPath: /health
+    envVars:
+      - key: PLACES_SERVICE_URL
+        fromService:
+          name: nyom-places-service
+          type: web
+          property: hostport
+      - key: USER_SERVICE_URL
+        fromService:
+          name: nyom-user-service
+          type: web
+          property: hostport
+
+  - name: nyom-assistant-service
+    type: web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/assistant-service/Dockerfile
+    dockerContext: ./services/assistant-service
+    healthCheckPath: /health
+    envVars:
+      - key: PLACES_SERVICE_URL
+        fromService:
+          name: nyom-places-service
+          type: web
+          property: hostport
+      - key: USER_SERVICE_URL
+        fromService:
+          name: nyom-user-service
+          type: web
+          property: hostport
+      # No OLLAMA_URL on purpose - nothing free to point it at from Render. The
+      # service already degrades gracefully (503 with a clear message) when
+      # Ollama isn't reachable, so this is left unset rather than pointed at
+      # something that doesn't exist.
+
+  - name: nyom-gateway
+    type: web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./services/gateway/Dockerfile
+    dockerContext: ./services/gateway
+    healthCheckPath: /health
+    envVars:
+      - key: USER_SERVICE_URL
+        fromService:
+          name: nyom-user-service
+          type: web
+          property: hostport
+      - key: PLACES_SERVICE_URL
+        fromService:
+          name: nyom-places-service
+          type: web
+          property: hostport
+      - key: RECOMMENDATION_SERVICE_URL
+        fromService:
+          name: nyom-recommendation-service
+          type: web
+          property: hostport
+      - key: ASSISTANT_SERVICE_URL
+        fromService:
+          name: nyom-assistant-service
+          type: web
+          property: hostport

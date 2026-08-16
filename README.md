@@ -261,6 +261,37 @@ Open **http://localhost:3000**. (Ollama from Step 1 is still required for the as
 No `.env` file is required to run this project - `.env.example` exists only if you want to override
 `OLLAMA_MODEL`.
 
+### Deploying to Render (free, publicly reachable)
+
+`render.yaml` at the repo root is a Render Blueprint that deploys `gateway`, `user-service`,
+`places-service`, `recommendation-service` and `assistant-service` as 5 separate Render Web
+Services on the free plan, each built from its own existing Dockerfile and wired to the others over
+Render's private network - the cloud equivalent of what `docker-compose.yml` does locally.
+
+**To deploy**: push this repo to GitHub (already done), then in the Render dashboard choose
+**New → Blueprint**, point it at the repo, and Render reads `render.yaml` and creates all 5 services
+automatically. No manual per-service setup needed.
+
+**What works immediately**: the map, places directory, search, accounts, favorites, visited
+tracking, reviews, share, directions and the Yango booking button - all fully free, all through the
+gateway's public URL.
+
+**Honest limitations of the free tier** (not hidden):
+- **No AI assistant.** Ollama needs more RAM/disk than a free Render instance provides, so it isn't
+  deployed. `/assistant/ask` returns the same graceful `503 "not reachable"` it already returns
+  locally whenever Ollama isn't running - nothing crashes, the rest of the site is unaffected.
+- **Data doesn't persist across restarts.** Free Render services have no persistent disk. Accounts,
+  favorites, visited history and chat history reset on every redeploy or free-tier spin-down. The
+  seed places directory does *not* reset (it's baked into the Docker image at build time, not
+  written at runtime).
+- **Every service gets a public URL, not just the gateway.** Render's free plan doesn't offer
+  private-only services, so `user-service`/`places-service`/etc. are each technically reachable
+  directly at their own `*.onrender.com` address, unlike the local Docker setup where only the
+  gateway has a published port. The gateway is still the intended single entry point for the
+  frontend; this is a free-tier platform constraint, not a design change.
+- **Cold starts.** Free services spin down after inactivity and take roughly 30-60 seconds to wake
+  up on the next request.
+
 ### Tests
 
 ```bash
