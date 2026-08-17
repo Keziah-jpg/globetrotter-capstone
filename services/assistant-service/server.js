@@ -2,8 +2,18 @@ const express = require('express');
 const { Pool } = require('pg');
 
 const app = express();
+
+// Managed Postgres (Render) requires SSL; our local Docker Compose / localhost
+// Postgres doesn't have it configured at all. Without this, a connection
+// attempt to a host that demands SSL doesn't fail fast - it just hangs until
+// the OS-level TCP timeout, which looks identical to the service being down.
+// connectionTimeoutMillis makes any real connection problem fail fast instead.
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://nyom:nyom_dev_password@localhost:5432/nyom';
+const isLocalDb = ['localhost', 'postgres', '127.0.0.1'].includes(new URL(DATABASE_URL).hostname);
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://nyom:nyom_dev_password@localhost:5432/nyom'
+  connectionString: DATABASE_URL,
+  ssl: isLocalDb ? false : { rejectUnauthorized: false },
+  connectionTimeoutMillis: 10000
 });
 
 // Some deployment targets hand inter-service URLs over as a bare "host:port"
@@ -19,6 +29,18 @@ const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:1b';
 
 const ah = fn => (req, res, next) => fn(req, res, next).catch(next);
+
+// Registered before the dbReady gate below so it never blocks on the database -
+// this is exactly the endpoint Render's own health check polls to decide if the
+// container is ready to receive traffic, so it must never hang.
+app.get('/health', async (req, res) => {
+  let ollamaReachable = false;
+  try {
+    const r = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(2000) });
+    ollamaReachable = r.ok;
+  } catch { /* not reachable */ }
+  res.json({ status: 'ok', service: 'assistant-service', model: OLLAMA_MODEL, ollamaReachable });
+});
 
 // Chat history is an append-only log, so unlike user-service's favorites/visited
 // it doesn't need row-locked read-modify-write to be concurrency-safe - every
@@ -216,15 +238,6 @@ app.get('/history', ah(async (req, res) => {
     ts: r.ts.toISOString()
   })));
 }));
-
-app.get('/health', async (req, res) => {
-  let ollamaReachable = false;
-  try {
-    const r = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(2000) });
-    ollamaReachable = r.ok;
-  } catch { /* not reachable */ }
-  res.json({ status: 'ok', service: 'assistant-service', model: OLLAMA_MODEL, ollamaReachable });
-});
 
 app.use((err, req, res, next) => {
   console.error(err);

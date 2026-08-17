@@ -4,8 +4,18 @@ const path = require('path');
 const { Pool } = require('pg');
 
 const app = express();
+
+// Managed Postgres (Render) requires SSL; our local Docker Compose / localhost
+// Postgres doesn't have it configured at all. Without this, a connection
+// attempt to a host that demands SSL doesn't fail fast - it just hangs until
+// the OS-level TCP timeout, which looks identical to the service being down.
+// connectionTimeoutMillis makes any real connection problem fail fast instead.
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://nyom:nyom_dev_password@localhost:5432/nyom';
+const isLocalDb = ['localhost', 'postgres', '127.0.0.1'].includes(new URL(DATABASE_URL).hostname);
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://nyom:nyom_dev_password@localhost:5432/nyom'
+  connectionString: DATABASE_URL,
+  ssl: isLocalDb ? false : { rejectUnauthorized: false },
+  connectionTimeoutMillis: 10000
 });
 
 // Some deployment targets hand inter-service URLs over as a bare "host:port"
@@ -26,6 +36,11 @@ const NYOM_GEOFENCE = {
 };
 
 const ah = fn => (req, res, next) => fn(req, res, next).catch(next);
+
+// Registered before the dbReady gate below so it never blocks on the database -
+// this is exactly the endpoint Render's own health check polls to decide if the
+// container is ready to receive traffic, so it must never hang.
+app.get('/health', (req, res) => res.json({ status: 'ok', service: 'places-service' }));
 
 // Postgres (not JSON files) is what makes writes here safe under real
 // concurrent load - see /services/:id PUT below for the row-lock pattern.
@@ -243,7 +258,6 @@ app.post('/services/share', requireAuth, ah(async (req, res) => {
   res.json(share);
 }));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', service: 'places-service' }));
 app.get('/metrics', ah(async (req, res) => {
   const places = await pool.query('SELECT COUNT(*) FROM places_service.places');
   const shares = await pool.query('SELECT COUNT(*) FROM places_service.shares');
