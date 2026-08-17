@@ -1,5 +1,5 @@
 # Render Blueprint - deploys the Phase 2 microservices as 5 separate Render Web
-# Services on the free plan.
+# Services on the free plan, backed by one free Render Postgres database.
 #
 # Inter-service URLs use each service's public HTTPS address (e.g.
 # https://nyom-user-service.onrender.com) rather than Render's private-network
@@ -17,15 +17,19 @@
 #
 # Free-tier limitations, disclosed rather than hidden (see README "Deploying to
 # Render" section for the full explanation):
-#   - No persistent disks on the free plan: user accounts, favorites, visited
-#     history and chat history reset on every deploy/restart. The seed places
-#     directory does NOT reset (it's baked into the image at build time).
+#   - Render's free Postgres expires 30 days after creation (14-day grace period
+#     to upgrade before deletion) and caps out at 1GB storage - fine for a class
+#     project, not something to build on long-term without upgrading.
 #   - The AI assistant has nothing to talk to here (Ollama isn't deployed - it
 #     needs more RAM/disk than a free instance gives you) - /assistant/ask will
 #     return the same "not reachable" 503 it already returns locally when Ollama
 #     isn't running. Every other feature works normally.
-#   - Free services spin down after inactivity and take ~30-60s to wake back up
-#     on the next request.
+#   - Free web services spin down after inactivity and take ~30-60s to wake back
+#     up on the next request.
+
+databases:
+  - name: nyom-db
+    plan: free
 
 services:
   - name: nyom-user-service
@@ -35,6 +39,11 @@ services:
     dockerfilePath: ./services/user-service/Dockerfile
     dockerContext: ./services/user-service
     healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nyom-db
+          property: connectionString
 
   - name: nyom-places-service
     type: web
@@ -46,6 +55,10 @@ services:
     envVars:
       - key: USER_SERVICE_URL
         value: https://nyom-user-service.onrender.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nyom-db
+          property: connectionString
 
   - name: nyom-recommendation-service
     type: web
@@ -72,6 +85,10 @@ services:
         value: https://nyom-places-service.onrender.com
       - key: USER_SERVICE_URL
         value: https://nyom-user-service.onrender.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nyom-db
+          property: connectionString
       # No OLLAMA_URL on purpose - nothing free to point it at from Render. The
       # service already degrades gracefully (503 with a clear message) when
       # Ollama isn't reachable, so this is left unset rather than pointed at

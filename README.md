@@ -36,8 +36,12 @@ talking to each other over REST, behind a single API Gateway:
       └────┬─────┘└─────┬─────┘└─────┬──────┘└───────┬───────┘│
            │            │            │  REST calls    │        │
            ▼            ▼            └──────┬─────────┘        │
-      users.json   places.json,             ▼                  │
-                   shares.json      (reads Places + User)   chats.json
+      ┌─────────────────────┐               ▼                  │
+      │      Postgres        │◄──────────────┘                  │
+      │  (schema per owning  │  (Recommendation reads            │
+      │   service - see      │   Places + User)                  │
+      │   table below)        │                                  │
+      └─────────────────────┘                                    │
                                                                 │
       ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ Docker network boundary ┄┄┄┄┄┄┄┄┄┼┄┄┄┄
                                                                 ▼
@@ -48,13 +52,21 @@ talking to each other over REST, behind a single API Gateway:
                                                         └──────────────┘
 ```
 
-| Service | Owns | Responsibilities |
+| Service | Owns (Postgres schema) | Responsibilities |
 |---|---|---|
-| **User Service** | `users.json` | Registration, login (scrypt-hashed passwords), profile/preferences, saved favorites and visited-places history. Exposes an internal `GET /internal/users/by-email/:email` used by other services to verify a caller is a real, registered user. |
-| **Places Service** | `places.json`, `shares.json` | Search/filter/CRUD on the Nyom directory, sharing. Write routes call **User Service** over REST to verify auth — real synchronous inter-service communication, not a shared database. Also owns the Nyom **geofence** config. |
+| **User Service** | `user_service.users` | Registration, login (scrypt-hashed passwords), profile/preferences, saved favorites and visited-places history. Exposes an internal `GET /internal/users/by-email/:email` used by other services to verify a caller is a real, registered user. |
+| **Places Service** | `places_service.places`, `places_service.shares` | Search/filter/CRUD on the Nyom directory, sharing. Write routes call **User Service** over REST to verify auth — real synchronous inter-service communication, not a shared database *table*. Also owns the Nyom **geofence** config. |
 | **Recommendation Service** | *(none — reads others)* | Calls **Places Service** for the popular feed and, when a user is logged in, **User Service** for their preferences, to personalise ranking. |
-| **Assistant Service** | `chats.json` | The AI assistant. Retrieves real matching places from **Places Service** (a small deterministic retrieval step - see below), sends that data plus the question to **Ollama** (a small model, llama3.2:1b by default), and attaches chat history to a real user via **User Service**. |
+| **Assistant Service** | `assistant_service.chats` | The AI assistant. Retrieves real matching places from **Places Service** (a small deterministic retrieval step - see below), sends that data plus the question to **Ollama** (a small model, llama3.2:1b by default), and attaches chat history to a real user via **User Service**. |
 | **API Gateway** | *(none)* | Single entry point on port 3000 - the only container with a port published to the host. Routes each path to the owning service, serves the static frontend, and aggregates `/metrics`. |
+
+**One Postgres instance, three schemas, strict ownership by convention**: all three data-owning
+services share one Postgres server (simplest thing that works on a free-tier deployment - see
+"Deploying to Render" below), but each has its *own schema* (`user_service`, `places_service`,
+`assistant_service`) and only that service's code ever touches its own schema. No service reads or
+writes another's tables directly - they only ever talk to each other over REST, exactly as if each
+had a fully separate database server. A stricter deployment could give each service its own Postgres
+instance with zero code changes, since nothing depends on them sharing a server.
 
 **Ollama runs natively on the host, not as a container** — a deliberate, pragmatic choice: the
 official `ollama/ollama` Docker image bundles a ~2.4GB GPU-library layer that's brutal to pull on a
@@ -77,8 +89,16 @@ popular feed), then hands that real data to the local model as context and asks 
 Same grounding guarantee (the model can't invent a place that isn't in the data), implemented in a way
 that doesn't depend on a specific model's tool-calling support.
 
-**Data storage**: per-service JSON files (not a shared database), so each service unambiguously owns
-its own data — the smallest thing that demonstrates real service boundaries for this course.
+**Data storage**: Postgres, one schema per owning service (see above) - not JSON files. That started
+as JSON files (deliberately, per the lecture brief) and was migrated once a real requirement surfaced:
+"accommodate 100 users." JSON files can't do that safely - every write was read-whole-file →
+modify → write-whole-file with no locking, so two concurrent writes (e.g. two users registering or
+saving a favorite at the same moment) could silently overwrite each other (a lost update), and the
+free hosting target (Render) has no persistent disk anyway, so the files would vanish on every
+restart regardless. Postgres fixes both: `SELECT ... FOR UPDATE` row locks make same-row concurrent
+writes correct instead of racy (see `services/user-service/server.js` `/favorites` and `/visited`,
+and the regression test for it in `services/user-service/test/api.test.js`), and a managed Postgres
+instance survives restarts independently of the app containers.
 
 ### Why microservices here (and the trade-off)
 Each service can be developed, tested, deployed and scaled independently, and a bug in one (e.g. the
@@ -107,9 +127,9 @@ so it's checkable line by line rather than taken on faith.
 | Required | Implemented as |
 |---|---|
 | Decompose the monolith into independent microservices | `src/` (Phase 1 monolith) split into `services/user-service`, `services/places-service`, `services/recommendation-service`, `services/gateway` — plus `services/assistant-service` as a bonus 4th service |
-| Service decomposition, inter-service communication, API design | Each service owns one REST resource family and one data file; see the routing table below and the `USER_SERVICE_URL` / `PLACES_SERVICE_URL` env vars each service calls |
-| **User Service** — manages registration, login, profiles, owns "users" data | `services/user-service` — owns `users.json` exclusively; no other service touches it directly |
-| **Itinerary Service** — owns core domain data | Renamed to **Places Service** for this domain (there's no "itinerary" concept in a places-locator app) — `services/places-service` owns `places.json` + `shares.json` exclusively |
+| Service decomposition, inter-service communication, API design | Each service owns one REST resource family and one Postgres schema; see the routing table below and the `USER_SERVICE_URL` / `PLACES_SERVICE_URL` env vars each service calls |
+| **User Service** — manages registration, login, profiles, owns "users" data | `services/user-service` — owns the `user_service` Postgres schema exclusively; no other service queries it directly |
+| **Itinerary Service** — owns core domain data | Renamed to **Places Service** for this domain (there's no "itinerary" concept in a places-locator app) — `services/places-service` owns the `places_service` Postgres schema exclusively |
 | **Recommendation Service** — reads from User + Itinerary services | `services/recommendation-service` — holds no data at all; every request calls Places Service (popular feed) and, when logged in, User Service (preferences) live over HTTP |
 | **API Gateway** — single entry point, routes to the right service | `services/gateway` — the only container with a published port (3000); every other service is unreachable from outside the Docker network |
 
@@ -128,17 +148,17 @@ so it's checkable line by line rather than taken on faith.
 | Team autonomy | Nothing stops a different person owning `assistant-service` end-to-end; it only depends on the *interfaces* of Places/User Service, not their internals. |
 | Technology diversity | All 4 services happen to be Node here (course/time constraint), but nothing in the architecture requires that — Places Service could be rewritten in Python tomorrow and the Gateway wouldn't notice, since the contract is just HTTP + JSON. |
 | Isolation | Demonstrated directly: if Ollama isn't running on the host, Assistant Service returns a clean `503` on its own routes — Places, User, Recommendation and the rest of the site keep working normally. |
-| Independent scaling | `docker compose up --scale places-service=3` would work today, since Places Service is stateless-per-request (all state is the shared volume) and the Gateway already talks to it by service name, not a fixed instance. |
+| Independent scaling | `docker compose up --scale places-service=3` would work today, since Places Service keeps no state in the process itself (it's all in Postgres) and the Gateway already talks to it by service name, not a fixed instance. |
 
 **Challenges — acknowledged, not hidden**
 | Challenge | How it's handled here |
 |---|---|
 | Network latency | Accepted trade-off, called out explicitly in "Why microservices here" above — each REST hop (e.g. a recommendation request touching 2 other services) is slower than the old in-process monolith call. |
-| Data consistency | Sidestepped rather than solved: each service owns exactly one data file, so there's no dual-write / eventual-consistency problem to manage in the first place. |
+| Data consistency | Solved directly, not sidestepped: each service owns exactly one Postgres schema (no dual-write across services), and within a schema, concurrent writes to the *same* row are serialized with `SELECT ... FOR UPDATE` transactions rather than racing - see `/favorites` and `/visited` in `services/user-service/server.js`. |
 | Service discovery | Static, via Docker Compose's built-in DNS (containers resolve each other by service name) plus `*_SERVICE_URL` env vars — appropriate at this scale; a real deployment would reach for something dynamic (Consul, Kubernetes Services). |
 | Distributed tracing | Not implemented — a genuine gap. At this scale, logs per container (`docker compose logs <service>`) are the debugging tool; a next step would be correlation IDs passed through the `x-user-email`-style headers. |
 | Deployment orchestration | `docker-compose.yml` handles it for this deliverable, exactly as the brief allows ("deployed on a single VM or Docker Compose"). |
-| Testing across services | Addressed head-on rather than avoided: each service's Jest suite boots the *real* services it depends on in-process (see `services/*/test/api.test.js`) so the tests exercise actual REST calls, not mocks. |
+| Testing across services | Addressed head-on rather than avoided: each service's Jest suite boots the *real* services it depends on in-process (see `services/*/test/api.test.js`) so the tests exercise actual REST calls and real Postgres queries, not mocks. Includes a regression test that specifically fires 25 concurrent writes at the same row and asserts none are lost. |
 
 ### Proof for grading — run these live, or screenshot the output
 
@@ -162,14 +182,17 @@ cat services/places-service/package.json
 ```
 Four separate `services/*/package.json` files, four separate `node_modules`, no shared code.
 
-**3. Each service owns its own data - prove it by hitting one directly (bypassing the gateway):**
+**3. Each service owns its own data - prove it by hitting one directly (bypassing the gateway) and inspecting the schemas:**
 ```bash
 docker compose exec places-service wget -qO- http://localhost:4002/services | head -c 300
 docker compose exec user-service wget -qO- http://localhost:4001/metrics
+docker compose exec postgres psql -U nyom -c "\dn"                      # lists the 3 schemas
+docker compose exec postgres psql -U nyom -c "\dt user_service.*"       # only user-service's tables
+docker compose exec postgres psql -U nyom -c "\dt places_service.*"     # only places-service's tables
 ```
-places-service's data is `services/places-service/data/places.json`; user-service's is
-`services/user-service/data/users.json` - two different files, two different containers, neither
-one able to read the other's disk.
+Each service's code only ever queries its own schema (`user_service`, `places_service`,
+`assistant_service`) - enforced by convention in each service's own `server.js`, the same as if each
+had a fully separate database server.
 
 **4. The API Gateway actually routes, it isn't just a label:**
 ```bash
@@ -182,7 +205,7 @@ All three go through port 3000 only, yet land in three different containers - se
 `services/gateway/server.js` for the routing table (`app.use('/services', ...)`,
 `app.use('/recommendations', ...)`, `app.use('/users', ...)`).
 
-**5. Real inter-service REST calls, not a shared database:**
+**5. Real inter-service REST calls, not a shared table:**
 ```bash
 curl -X POST http://localhost:3000/services -H "Content-Type: application/json" \
   -H "x-user-email: ghost@nowhere.com" -d '{"name":"test"}'
@@ -203,8 +226,8 @@ app being restarted.
 
 **Deliverable**: *"Three independent services communicating via REST APIs, with an API Gateway,
 deployed on a single VM or Docker Compose."* — met and exceeded: 4 independent services + gateway,
-communicating over real REST, running as 6 Docker Compose containers (verified end-to-end: register
-→ login → auth-gated CRUD → recommendations → geofence → aggregated metrics, all through the
+communicating over real REST, backed by Postgres, running as 7 Docker Compose containers (verified
+end-to-end: register → login → auth-gated CRUD → recommendations → geofence → aggregated metrics, all through the
 gateway on the real Docker network). See "Proof for grading" below for how to demonstrate every one
 of these live.
 
@@ -236,16 +259,18 @@ On Windows/Mac, the installer sets Ollama up to run in the background automatica
 docker compose up --build
 ```
 
-Open **http://localhost:3000**. This starts **six containers**: `gateway`, `user-service`,
-`places-service`, `recommendation-service`, `assistant-service`, plus named volumes for persisted
-data. Map, places, accounts, favorites, visited-tracking and directions all work immediately; the
-assistant works as soon as Ollama (from Step 1) responds on your machine.
+Open **http://localhost:3000**. This starts **seven containers**: `postgres`, `gateway`,
+`user-service`, `places-service`, `recommendation-service`, `assistant-service`, plus a named volume
+so Postgres data survives container restarts. Map, places, accounts, favorites, visited-tracking and
+directions all work immediately; the assistant works as soon as Ollama (from Step 1) responds on
+your machine.
 
 ### Option B — everything locally without Docker
 
 ```bash
-npm run install:services   # installs each service's own node_modules
-npm run dev                 # runs all 5 Node services concurrently
+docker compose up -d postgres   # still needs a real Postgres to talk to
+npm run install:services         # installs each service's own node_modules
+npm run dev                       # runs all 5 Node services concurrently
 ```
 
 Open **http://localhost:3000**. (Ollama from Step 1 is still required for the assistant.)
@@ -254,6 +279,7 @@ Open **http://localhost:3000**. (Ollama from Step 1 is still required for the as
 
 | Variable | Used by | Purpose |
 |---|---|---|
+| `DATABASE_URL` | user-service, places-service, assistant-service | Postgres connection string. Defaults to `postgresql://nyom:nyom_dev_password@localhost:5432/nyom`, matching the `postgres` service in `docker-compose.yml`. |
 | `OLLAMA_MODEL` | assistant-service | Which local model to ask Ollama for. Defaults to `llama3.2:1b`. Optional - set to `llama3` or anything else you've pulled for better quality. |
 | `OLLAMA_URL` | assistant-service | Where to reach Ollama. Defaults to `http://host.docker.internal:11434` in Docker Compose (reaches Ollama on your host machine), `http://localhost:11434` for local dev. |
 | `*_SERVICE_URL` | gateway, recommendation-service, places-service, assistant-service | Where to reach each other service. Pre-wired for both Docker Compose (service names) and local dev (`localhost:<port>`). |
@@ -265,25 +291,27 @@ No `.env` file is required to run this project - `.env.example` exists only if y
 
 `render.yaml` at the repo root is a Render Blueprint that deploys `gateway`, `user-service`,
 `places-service`, `recommendation-service` and `assistant-service` as 5 separate Render Web
-Services on the free plan, each built from its own existing Dockerfile and wired to the others over
-Render's private network - the cloud equivalent of what `docker-compose.yml` does locally.
+Services on the free plan, plus one free Render Postgres database (`nyom-db`) that `user-service`,
+`places-service` and `assistant-service` connect to via `DATABASE_URL`. Inter-service HTTP calls use
+each service's public HTTPS URL rather than Render's private network - see the comment at the top of
+`render.yaml` for why (the private-network reference didn't resolve reliably on this deployment).
 
 **To deploy**: push this repo to GitHub (already done), then in the Render dashboard choose
 **New → Blueprint**, point it at the repo, and Render reads `render.yaml` and creates all 5 services
-automatically. No manual per-service setup needed.
+plus the database automatically. No manual per-service setup needed.
 
 **What works immediately**: the map, places directory, search, accounts, favorites, visited
 tracking, reviews, share, directions and the Yango booking button - all fully free, all through the
-gateway's public URL.
+gateway's public URL, and all backed by real Postgres so it correctly handles concurrent users (not
+just a single-user demo).
 
 **Honest limitations of the free tier** (not hidden):
 - **No AI assistant.** Ollama needs more RAM/disk than a free Render instance provides, so it isn't
   deployed. `/assistant/ask` returns the same graceful `503 "not reachable"` it already returns
   locally whenever Ollama isn't running - nothing crashes, the rest of the site is unaffected.
-- **Data doesn't persist across restarts.** Free Render services have no persistent disk. Accounts,
-  favorites, visited history and chat history reset on every redeploy or free-tier spin-down. The
-  seed places directory does *not* reset (it's baked into the Docker image at build time, not
-  written at runtime).
+- **The free Postgres database expires.** Render deletes free Postgres instances 30 days after
+  creation (with a 14-day grace period to upgrade before that happens) and caps storage at 1GB.
+  Fine for a class project's timeline; not something to build on indefinitely without upgrading.
 - **Every service gets a public URL, not just the gateway.** Render's free plan doesn't offer
   private-only services, so `user-service`/`places-service`/etc. are each technically reachable
   directly at their own `*.onrender.com` address, unlike the local Docker setup where only the
@@ -294,13 +322,20 @@ gateway's public URL.
 
 ### Tests
 
+Requires a real Postgres reachable at `DATABASE_URL` (or the default `localhost:5432` one below) -
+each service creates its own schema/tables automatically on startup, tests included.
+
 ```bash
+docker compose up -d postgres   # one-time, if it isn't already running
 npm run test:services
 ```
 
 Each service's suite spins up the real services it depends on in-process (e.g. places-service's
-tests boot a real user-service instance to exercise the actual REST auth check), rather than mocking
-the network boundary — so the tests catch the same integration bugs a mocked test would hide.
+tests boot a real user-service instance to exercise the actual REST auth check) and hits real
+Postgres, rather than mocking the network or database boundary — so the tests catch the same
+integration bugs a mocked test would hide. This includes a concurrency regression test that fires 25
+simultaneous writes at the same user's row and asserts every single one lands (see "Data storage"
+under Architecture for why that matters).
 
 ---
 
@@ -368,14 +403,12 @@ the network boundary — so the tests catch the same integration bugs a mocked t
   terms and confirmed there's nothing to find, rather than substitute an unrelated stock photo that
   would misrepresent the actual place. Total Okolo does have a photo because it's the same
   TotalEnergies chain/branding, honestly captioned as representative rather than the exact pump.
-- **Reviews are seeded, not user-submitted**: since the app isn't deployed yet, each place ships
-  with 2 reviews from fictional-but-realistic Cameroonian names as placeholder content, exactly as
-  requested for pre-launch testing. There's no review-submission form yet - that would be the
-  natural next feature once real users are testing it.
+- **Reviews are seeded, not user-submitted**: each place ships with 2 reviews from
+  fictional-but-realistic Cameroonian names as placeholder content, exactly as requested for
+  pre-launch testing. There's no review-submission form yet - that would be the natural next feature
+  once real users are testing it.
 - Auth is a lightweight `x-user-email` header verified against User Service, not a signed
   token/session — appropriate for a class project's timeline, not production-grade.
-- Each service persists to a JSON file, not a real database — deliberate for this phase (see
-  Architecture above), and each file is genuinely owned by exactly one service.
 - **The AI assistant needs Ollama installed and running on your machine** (not in Docker - see
   Architecture above for why), with its model already pulled (~1.3GB for the default llama3.2:1b,
   one-time). Until that's done, `/assistant/ask` returns a clear `503` instead of hanging or
