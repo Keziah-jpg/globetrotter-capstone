@@ -3,11 +3,18 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const CHATS_FILE = path.join(__dirname, 'data', 'chats.json');
+const DATA_DIR = path.join(__dirname, 'data');
+const CHATS_FILE = path.join(DATA_DIR, 'chats.json');
 
-// Render's private-network "hostport" reference gives just "host:port" with no
-// protocol, while Docker Compose env vars are already a full "http://host:port" -
-// normalize so the same code works unchanged on both.
+// chats.json isn't committed to git (it's runtime state), so on a host with no
+// persistent volume (e.g. Render, unlike our Docker Compose named volumes) it
+// wouldn't exist in the container at all otherwise, and the first write would
+// fail with ENOENT.
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+// Some deployment targets hand inter-service URLs over as a bare "host:port"
+// with no protocol, while others (Docker Compose) give a full "http://host:port" -
+// normalize so the same code works unchanged either way.
 function withProtocol(url) {
   return url.includes('://') ? url : `http://${url}`;
 }

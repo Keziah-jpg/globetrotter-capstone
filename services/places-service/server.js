@@ -3,8 +3,15 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PLACES_FILE = path.join(__dirname, 'data', 'places.json');
-const SHARES_FILE = path.join(__dirname, 'data', 'shares.json');
+const DATA_DIR = path.join(__dirname, 'data');
+const PLACES_FILE = path.join(DATA_DIR, 'places.json');
+const SHARES_FILE = path.join(DATA_DIR, 'shares.json');
+
+// shares.json isn't committed to git (it's runtime state, unlike the seed
+// places.json), so on a host with no persistent volume (e.g. Render, unlike our
+// Docker Compose named volumes) it wouldn't exist in the container at all
+// otherwise, and the first read/write would fail with ENOENT.
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // Render's private-network "hostport" reference gives just "host:port" with no
 // protocol, while Docker Compose env vars are already a full "http://host:port" -
@@ -26,6 +33,7 @@ const NYOM_GEOFENCE = {
 app.use(express.json());
 
 function readJson(file) {
+  if (!fs.existsSync(file)) return [];
   return JSON.parse(fs.readFileSync(file));
 }
 function writeJson(file, data) {

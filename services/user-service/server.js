@@ -4,7 +4,14 @@ const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
-const DATA_FILE = path.join(__dirname, 'data', 'users.json');
+const DATA_DIR = path.join(__dirname, 'data');
+const DATA_FILE = path.join(DATA_DIR, 'users.json');
+
+// The data/ directory isn't committed to git (its contents are runtime state),
+// so on a host with no persistent volume (e.g. Render, unlike our Docker Compose
+// named volumes) it wouldn't exist in the container at all otherwise, and the
+// first write would fail with ENOENT.
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 app.use(express.json());
 
