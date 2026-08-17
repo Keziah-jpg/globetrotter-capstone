@@ -2,12 +2,12 @@ const request = require('supertest');
 
 const email = `bob.${Date.now()}@example.com`;
 
-let userServer, app;
+let userServer, userApp, app;
 
 beforeAll((done) => {
   // Real cross-service call: places-service's write routes verify the
   // x-user-email header against a live user-service over HTTP.
-  const userApp = require('../../user-service/server');
+  userApp = require('../../user-service/server');
   userServer = userApp.listen(0, async () => {
     process.env.USER_SERVICE_URL = `http://localhost:${userServer.address().port}`;
     app = require('../server');
@@ -16,8 +16,10 @@ beforeAll((done) => {
   });
 }, 15000);
 
-afterAll((done) => {
-  userServer.close(done);
+afterAll(async () => {
+  await app.pool.end();
+  await userApp.pool.end();
+  await new Promise(resolve => userServer.close(resolve));
 });
 
 describe('places-service', () => {

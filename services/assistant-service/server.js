@@ -1,16 +1,10 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
-const DATA_DIR = path.join(__dirname, 'data');
-const CHATS_FILE = path.join(DATA_DIR, 'chats.json');
-
-// chats.json isn't committed to git (it's runtime state), so on a host with no
-// persistent volume (e.g. Render, unlike our Docker Compose named volumes) it
-// wouldn't exist in the container at all otherwise, and the first write would
-// fail with ENOENT.
-fs.mkdirSync(DATA_DIR, { recursive: true });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://nyom:nyom_dev_password@localhost:5432/nyom'
+});
 
 // Some deployment targets hand inter-service URLs over as a bare "host:port"
 // with no protocol, while others (Docker Compose) give a full "http://host:port" -
@@ -24,15 +18,40 @@ const USER_SERVICE_URL = withProtocol(process.env.USER_SERVICE_URL || 'http://lo
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:1b';
 
-app.use(express.json());
+const ah = fn => (req, res, next) => fn(req, res, next).catch(next);
 
-function readChats() {
-  if (!fs.existsSync(CHATS_FILE)) return {};
-  return JSON.parse(fs.readFileSync(CHATS_FILE));
+// Chat history is an append-only log, so unlike user-service's favorites/visited
+// it doesn't need row-locked read-modify-write to be concurrency-safe - every
+// message is just its own INSERT, which Postgres handles safely on its own.
+// Retries with backoff since Render doesn't guarantee this service starts
+// after its database.
+async function ensureSchema() {
+  const maxAttempts = 10;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await pool.query('CREATE SCHEMA IF NOT EXISTS assistant_service');
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS assistant_service.chats (
+          id SERIAL PRIMARY KEY,
+          email TEXT NOT NULL,
+          role TEXT NOT NULL,
+          content TEXT NOT NULL,
+          places JSONB,
+          ts TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+      `);
+      await pool.query('CREATE INDEX IF NOT EXISTS chats_email_idx ON assistant_service.chats (email, ts)');
+      return;
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
 }
-function writeChats(chats) {
-  fs.writeFileSync(CHATS_FILE, JSON.stringify(chats, null, 2));
-}
+const dbReady = ensureSchema();
+
+app.use(express.json());
+app.use(ah(async (req, res, next) => { await dbReady; next(); }));
 
 const SYSTEM_PROMPT = `You are the Nyom Locator assistant, embedded in a directory app for essential
 places in Nyom, a neighborhood of Yaoundé, Cameroon: hospitals, clinics, pharmacies, markets,
@@ -140,7 +159,7 @@ async function askOllama(message, context) {
 
 // POST /assistant/ask { message, lat?, lng? } - x-user-email header optional
 // (chat history is only persisted when the caller is logged in)
-app.post('/ask', async (req, res) => {
+app.post('/ask', ah(async (req, res) => {
   const { message, lat, lng } = req.body;
   if (!message || !message.trim()) return res.status(400).json({ message: 'message is required' });
   const email = req.headers['x-user-email'];
@@ -160,22 +179,24 @@ app.post('/ask', async (req, res) => {
     const reply = { reply: replyText || "I couldn't find anything for that - try rephrasing.", places };
 
     if (email) {
-      const chats = readChats();
-      const history = chats[email] || [];
-      history.push({ role: 'user', content: message, ts: new Date().toISOString() });
-      history.push({ role: 'assistant', content: reply.reply, places, ts: new Date().toISOString() });
-      chats[email] = history;
-      writeChats(chats);
+      await pool.query(
+        'INSERT INTO assistant_service.chats (email, role, content) VALUES ($1, $2, $3)',
+        [email, 'user', message]
+      );
+      await pool.query(
+        'INSERT INTO assistant_service.chats (email, role, content, places) VALUES ($1, $2, $3, $4)',
+        [email, 'assistant', reply.reply, JSON.stringify(places)]
+      );
     }
 
     res.json(reply);
   } catch (err) {
     res.status(502).json({ message: 'Assistant request failed', error: err.message });
   }
-});
+}));
 
 // GET /history - x-user-email header required
-app.get('/history', async (req, res) => {
+app.get('/history', ah(async (req, res) => {
   const email = req.headers['x-user-email'];
   if (!email) return res.status(401).json({ message: 'Login required' });
   try {
@@ -184,9 +205,17 @@ app.get('/history', async (req, res) => {
   } catch (err) {
     return res.status(502).json({ message: 'user-service unavailable' });
   }
-  const chats = readChats();
-  res.json(chats[email] || []);
-});
+  const result = await pool.query(
+    'SELECT role, content, places, ts FROM assistant_service.chats WHERE email = $1 ORDER BY ts ASC',
+    [email]
+  );
+  res.json(result.rows.map(r => ({
+    role: r.role,
+    content: r.content,
+    places: r.places || undefined,
+    ts: r.ts.toISOString()
+  })));
+}));
 
 app.get('/health', async (req, res) => {
   let ollamaReachable = false;
@@ -197,8 +226,14 @@ app.get('/health', async (req, res) => {
   res.json({ status: 'ok', service: 'assistant-service', model: OLLAMA_MODEL, ollamaReachable });
 });
 
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ message: 'Internal error' });
+});
+
 if (require.main === module) {
   const PORT = process.env.PORT || 4004;
   app.listen(PORT, () => console.log(`assistant-service listening on ${PORT}`));
 }
+app.pool = pool; // exposed so tests can pool.end() and let Jest exit cleanly
 module.exports = app;

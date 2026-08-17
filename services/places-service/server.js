@@ -1,21 +1,16 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
-const DATA_DIR = path.join(__dirname, 'data');
-const PLACES_FILE = path.join(DATA_DIR, 'places.json');
-const SHARES_FILE = path.join(DATA_DIR, 'shares.json');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://nyom:nyom_dev_password@localhost:5432/nyom'
+});
 
-// shares.json isn't committed to git (it's runtime state, unlike the seed
-// places.json), so on a host with no persistent volume (e.g. Render, unlike our
-// Docker Compose named volumes) it wouldn't exist in the container at all
-// otherwise, and the first read/write would fail with ENOENT.
-fs.mkdirSync(DATA_DIR, { recursive: true });
-
-// Render's private-network "hostport" reference gives just "host:port" with no
-// protocol, while Docker Compose env vars are already a full "http://host:port" -
-// normalize so the same code works unchanged on both.
+// Some deployment targets hand inter-service URLs over as a bare "host:port"
+// with no protocol, while others (Docker Compose) give a full "http://host:port" -
+// normalize so the same code works unchanged either way.
 function withProtocol(url) {
   return url.includes('://') ? url : `http://${url}`;
 }
@@ -30,14 +25,51 @@ const NYOM_GEOFENCE = {
   radiusKm: 4
 };
 
-app.use(express.json());
+const ah = fn => (req, res, next) => fn(req, res, next).catch(next);
 
-function readJson(file) {
-  if (!fs.existsSync(file)) return [];
-  return JSON.parse(fs.readFileSync(file));
+// Postgres (not JSON files) is what makes writes here safe under real
+// concurrent load - see /services/:id PUT below for the row-lock pattern.
+// The seed places.json is still the source of truth for initial data (all the
+// real, OSM-verified Nyom places researched for this project); it's loaded
+// into the table once, the first time the table is empty. Retries with backoff
+// since Render doesn't guarantee this service starts after its database.
+async function ensureSchema() {
+  const maxAttempts = 10;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await pool.query('CREATE SCHEMA IF NOT EXISTS places_service');
+      await pool.query('CREATE TABLE IF NOT EXISTS places_service.places (id INTEGER PRIMARY KEY, data JSONB NOT NULL)');
+      await pool.query('CREATE SEQUENCE IF NOT EXISTS places_service.places_id_seq');
+      await pool.query('CREATE TABLE IF NOT EXISTS places_service.shares (id SERIAL PRIMARY KEY, data JSONB NOT NULL)');
+
+      const { rows: [{ count }] } = await pool.query('SELECT COUNT(*) FROM places_service.places');
+      if (Number(count) === 0) {
+        const seedPath = path.join(__dirname, 'data', 'places.json');
+        const seedPlaces = JSON.parse(fs.readFileSync(seedPath));
+        for (const place of seedPlaces) {
+          const { id, ...rest } = place;
+          await pool.query(
+            'INSERT INTO places_service.places (id, data) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING',
+            [id, JSON.stringify(rest)]
+          );
+        }
+      }
+      const { rows: [{ max }] } = await pool.query('SELECT COALESCE(MAX(id), 0) AS max FROM places_service.places');
+      await pool.query(`SELECT setval('places_service.places_id_seq', $1, true)`, [Math.max(Number(max), 1)]);
+      return;
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
 }
-function writeJson(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+const dbReady = ensureSchema();
+
+app.use(express.json());
+app.use(ah(async (req, res, next) => { await dbReady; next(); }));
+
+function toPlace(row) {
+  return { id: row.id, ...row.data };
 }
 
 // Auth guard for write routes - verifies the x-user-email header against
@@ -138,45 +170,58 @@ app.get('/geofence', (req, res) => {
   res.json(response);
 });
 
-app.post('/services', requireAuth, (req, res) => {
-  const places = readJson(PLACES_FILE);
-  const nextId = places.reduce((max, s) => Math.max(max, s.id), 0) + 1;
-  const service = { id: nextId, rating: 0, popular: false, ...req.body };
-  places.push(service);
-  writeJson(PLACES_FILE, places);
-  res.json(service);
-});
+app.post('/services', requireAuth, ah(async (req, res) => {
+  const { rows: [{ nextval }] } = await pool.query(`SELECT nextval('places_service.places_id_seq') AS nextval`);
+  const id = Number(nextval);
+  const service = { rating: 0, popular: false, ...req.body };
+  delete service.id;
+  await pool.query('INSERT INTO places_service.places (id, data) VALUES ($1, $2)', [id, JSON.stringify(service)]);
+  res.json({ id, ...service });
+}));
 
-app.put('/services/:id', requireAuth, (req, res) => {
-  const places = readJson(PLACES_FILE);
+// SELECT ... FOR UPDATE locks this one place's row for the transaction, so two
+// concurrent edits to the SAME place are serialized correctly instead of one
+// silently overwriting the other - while edits to different places (or reads)
+// aren't blocked at all.
+app.put('/services/:id', requireAuth, ah(async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const idx = places.findIndex(s => s.id === id);
-  if (idx === -1) return res.status(404).json({ message: 'Not found' });
-  places[idx] = { ...places[idx], ...req.body, id };
-  writeJson(PLACES_FILE, places);
-  res.json(places[idx]);
-});
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query('SELECT data FROM places_service.places WHERE id = $1 FOR UPDATE', [id]);
+    if (!result.rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Not found' }); }
+    const updated = { ...result.rows[0].data, ...req.body };
+    delete updated.id;
+    await client.query('UPDATE places_service.places SET data = $1 WHERE id = $2', [JSON.stringify(updated), id]);
+    await client.query('COMMIT');
+    res.json({ id, ...updated });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}));
 
-app.delete('/services/:id', requireAuth, (req, res) => {
-  let places = readJson(PLACES_FILE);
+app.delete('/services/:id', requireAuth, ah(async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (!places.some(s => s.id === id)) return res.status(404).json({ message: 'Not found' });
-  places = places.filter(s => s.id !== id);
-  writeJson(PLACES_FILE, places);
+  const result = await pool.query('DELETE FROM places_service.places WHERE id = $1', [id]);
+  if (result.rowCount === 0) return res.status(404).json({ message: 'Not found' });
   res.json({ message: 'Deleted' });
-});
+}));
 
-app.get('/services', (req, res) => {
+app.get('/services', ah(async (req, res) => {
   const { lat, lng } = parseLatLng(req.query);
-  res.json(withDistance(readJson(PLACES_FILE), lat, lng));
-});
+  const result = await pool.query('SELECT id, data FROM places_service.places ORDER BY id');
+  res.json(withDistance(result.rows.map(toPlace), lat, lng));
+}));
 
-app.get('/services/search', (req, res) => {
+app.get('/services/search', ah(async (req, res) => {
   const { type, name, language } = req.query;
   const { lat, lng } = parseLatLng(req.query);
-  const places = readJson(PLACES_FILE);
+  const result = await pool.query('SELECT id, data FROM places_service.places');
   const q = name ? name.toLowerCase() : '';
-  const results = places.filter(s => {
+  const results = result.rows.map(toPlace).filter(s => {
     const matchesQuery = !q ||
       s.name.toLowerCase().includes(q) ||
       s.type.toLowerCase().includes(q) ||
@@ -184,31 +229,35 @@ app.get('/services/search', (req, res) => {
     return matchesQuery && (!type || s.type === type) && (!language || s.languages.includes(language));
   });
   res.json(withDistance(results, lat, lng));
-});
+}));
 
-app.get('/services/:id', (req, res) => {
-  const places = readJson(PLACES_FILE);
-  const service = places.find(s => s.id === parseInt(req.params.id, 10));
-  if (!service) return res.status(404).json({ message: 'Not found' });
-  res.json(service);
-});
+app.get('/services/:id', ah(async (req, res) => {
+  const result = await pool.query('SELECT id, data FROM places_service.places WHERE id = $1', [parseInt(req.params.id, 10)]);
+  if (!result.rows[0]) return res.status(404).json({ message: 'Not found' });
+  res.json(toPlace(result.rows[0]));
+}));
 
-app.post('/services/share', requireAuth, (req, res) => {
-  const shares = readJson(SHARES_FILE);
+app.post('/services/share', requireAuth, ah(async (req, res) => {
   const share = { ...req.body, sharedBy: req.authUser.email, sharedAt: new Date().toISOString() };
-  shares.push(share);
-  writeJson(SHARES_FILE, shares);
+  await pool.query('INSERT INTO places_service.shares (data) VALUES ($1)', [JSON.stringify(share)]);
   res.json(share);
-});
+}));
 
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'places-service' }));
-app.get('/metrics', (req, res) => res.json({
-  services: readJson(PLACES_FILE).length,
-  shares: readJson(SHARES_FILE).length
+app.get('/metrics', ah(async (req, res) => {
+  const places = await pool.query('SELECT COUNT(*) FROM places_service.places');
+  const shares = await pool.query('SELECT COUNT(*) FROM places_service.shares');
+  res.json({ services: Number(places.rows[0].count), shares: Number(shares.rows[0].count) });
 }));
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ message: 'Internal error' });
+});
 
 if (require.main === module) {
   const PORT = process.env.PORT || 4002;
   app.listen(PORT, () => console.log(`places-service listening on ${PORT}`));
 }
+app.pool = pool; // exposed so tests can pool.end() and let Jest exit cleanly
 module.exports = app;

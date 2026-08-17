@@ -1,14 +1,14 @@
 const request = require('supertest');
 
-let userServer, placesServer, app;
+let userServer, placesServer, userApp, placesApp, app;
 const email = `dora.${Date.now()}@example.com`;
 
 beforeAll((done) => {
-  const userApp = require('../../user-service/server');
+  userApp = require('../../user-service/server');
   userServer = userApp.listen(0, async () => {
     process.env.USER_SERVICE_URL = `http://localhost:${userServer.address().port}`;
 
-    const placesApp = require('../../places-service/server');
+    placesApp = require('../../places-service/server');
     placesServer = placesApp.listen(0, async () => {
       process.env.PLACES_SERVICE_URL = `http://localhost:${placesServer.address().port}`;
       // No Ollama server running in the test environment: exercises the
@@ -22,8 +22,12 @@ beforeAll((done) => {
   });
 }, 15000);
 
-afterAll((done) => {
-  placesServer.close(() => userServer.close(done));
+afterAll(async () => {
+  await app.pool.end();
+  await placesApp.pool.end();
+  await userApp.pool.end();
+  await new Promise(resolve => placesServer.close(resolve));
+  await new Promise(resolve => userServer.close(resolve));
 });
 
 describe('assistant-service', () => {

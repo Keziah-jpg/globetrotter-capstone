@@ -1,16 +1,13 @@
 const request = require('supertest');
-const fs = require('fs');
-const path = require('path');
 
-const DATA_FILE = path.join(__dirname, '..', 'data', 'users.json');
+// Requires a real Postgres reachable at DATABASE_URL (defaults to the one
+// docker-compose.yml starts - run `docker compose up -d postgres` first).
+// The server creates its own schema/table on startup if missing.
 const app = require('../server');
 
 const email = `alice.${Date.now()}@example.com`;
 
-afterAll(() => {
-  // leave the data file empty for the next test run
-  if (fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, '[]');
-});
+afterAll(() => app.pool.end());
 
 describe('user-service', () => {
   it('registers a new user with a hashed password (never returned in plain text)', async () => {
@@ -85,5 +82,25 @@ describe('user-service', () => {
 
     const list = await request(app).get('/visited').set('x-user-email', email);
     expect(list.body.visited).toHaveLength(1);
+  });
+
+  // This is the actual "accommodate 100 users" fix: with the old JSON-file
+  // storage, N simultaneous writes did read-whole-file -> modify -> write-whole-
+  // file with no locking, so concurrent requests could overwrite each other's
+  // change (a lost update). Postgres's SELECT ... FOR UPDATE row lock in the
+  // /favorites handler serializes writes to the SAME row instead, so this must
+  // come out with all 25 toggles applied - not fewer.
+  it('does not lose updates when many requests toggle favorites concurrently', async () => {
+    const concurrentEmail = `concurrent.${Date.now()}@example.com`;
+    await request(app).post('/users').send({ name: 'C', email: concurrentEmail, password: 'pw123456' });
+
+    const placeIds = Array.from({ length: 25 }, (_, i) => i + 1);
+    await Promise.all(placeIds.map(placeId =>
+      request(app).post('/favorites').set('x-user-email', concurrentEmail).send({ placeId })
+    ));
+
+    const res = await request(app).get('/favorites').set('x-user-email', concurrentEmail);
+    expect(res.body.favorites).toHaveLength(25);
+    expect(res.body.favorites.slice().sort((a, b) => a - b)).toEqual(placeIds);
   });
 });

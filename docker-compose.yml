@@ -1,8 +1,12 @@
 # Phase 2 - Nyom Locator as independent microservices behind an API Gateway.
-# `docker compose up --build` starts all six containers on one shared network;
-# the gateway is the only one exposed to the host, matching the "single entry
+# `docker compose up --build` starts all containers on one shared network; the
+# gateway is the only one exposed to the host, matching the "single entry
 # point" requirement from the microservices brief. Every external dependency
 # (map tiles, routing, AI) is free - no API keys, no billing.
+#
+# Data storage is Postgres (one instance, one schema per owning service - see
+# README "Data storage" for why this replaced the earlier JSON-file approach:
+# JSON files can't safely handle concurrent writes from multiple users at once).
 #
 # The AI assistant expects Ollama running natively on your machine (not in a
 # container - see README for why and how to install it), reached via Docker
@@ -12,22 +16,45 @@
 # not part of this stack - see README.md.
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nyom_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=nyom
+      - POSTGRES_PASSWORD=nyom_dev_password
+      - POSTGRES_DB=nyom
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nyom"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   user-service:
     build: ./services/user-service
     container_name: nyom_user_service
-    volumes:
-      - user_data:/app/data
     environment:
       - PORT=4001
+      - DATABASE_URL=postgresql://nyom:nyom_dev_password@postgres:5432/nyom
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   places-service:
     build: ./services/places-service
     container_name: nyom_places_service
-    volumes:
-      - places_data:/app/data
     environment:
       - PORT=4002
       - USER_SERVICE_URL=http://user-service:4001
+      - DATABASE_URL=postgresql://nyom:nyom_dev_password@postgres:5432/nyom
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_started
 
   recommendation-service:
     build: ./services/recommendation-service
@@ -43,19 +70,22 @@ services:
   assistant-service:
     build: ./services/assistant-service
     container_name: nyom_assistant_service
-    volumes:
-      - assistant_data:/app/data
     environment:
       - PORT=4004
       - PLACES_SERVICE_URL=http://places-service:4002
       - USER_SERVICE_URL=http://user-service:4001
       - OLLAMA_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:1b}
+      - DATABASE_URL=postgresql://nyom:nyom_dev_password@postgres:5432/nyom
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - places-service
-      - user-service
+      postgres:
+        condition: service_healthy
+      places-service:
+        condition: service_started
+      user-service:
+        condition: service_started
 
   gateway:
     build: ./services/gateway
@@ -75,6 +105,4 @@ services:
       - assistant-service
 
 volumes:
-  user_data:
-  places_data:
-  assistant_data:
+  postgres_data:

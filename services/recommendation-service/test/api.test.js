@@ -1,14 +1,14 @@
 const request = require('supertest');
 
-let userServer, placesServer, app;
+let userServer, placesServer, userApp, placesApp, app;
 const email = `carol.${Date.now()}@example.com`;
 
 beforeAll((done) => {
-  const userApp = require('../../user-service/server');
+  userApp = require('../../user-service/server');
   userServer = userApp.listen(0, async () => {
     process.env.USER_SERVICE_URL = `http://localhost:${userServer.address().port}`;
 
-    const placesApp = require('../../places-service/server');
+    placesApp = require('../../places-service/server');
     placesServer = placesApp.listen(0, async () => {
       process.env.PLACES_SERVICE_URL = `http://localhost:${placesServer.address().port}`;
       app = require('../server');
@@ -19,8 +19,11 @@ beforeAll((done) => {
   });
 }, 15000);
 
-afterAll((done) => {
-  placesServer.close(() => userServer.close(done));
+afterAll(async () => {
+  await placesApp.pool.end();
+  await userApp.pool.end();
+  await new Promise(resolve => placesServer.close(resolve));
+  await new Promise(resolve => userServer.close(resolve));
 });
 
 describe('recommendation-service', () => {
