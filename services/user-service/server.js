@@ -49,6 +49,20 @@ async function ensureSchema() {
           visited JSONB NOT NULL DEFAULT '[]'
         )
       `);
+      // An itinerary is an ordered list of checkpoints (places to visit, in
+      // order) a user is planning - checkpoints is a JSON array of
+      // {placeId, notes}; position in the array IS the stop order, so
+      // reordering/swapping is just replacing the array under a row lock.
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_service.itineraries (
+          id SERIAL PRIMARY KEY,
+          owner_email TEXT NOT NULL,
+          title TEXT NOT NULL,
+          checkpoints JSONB NOT NULL DEFAULT '[]',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+      `);
+      await pool.query('CREATE INDEX IF NOT EXISTS itineraries_owner_idx ON user_service.itineraries (owner_email)');
       return;
     } catch (err) {
       if (attempt === maxAttempts) throw err;
@@ -188,6 +202,137 @@ app.post('/visited', requireAuth, ah(async (req, res) => {
 
 app.get('/visited', requireAuth, ah(async (req, res) => {
   res.json({ visited: req.authUser.visited || [] });
+}));
+
+// ---- Itineraries: plan a trip as an ordered list of checkpoints ----
+
+async function loadOwnedItinerary(id, email) {
+  const result = await pool.query(
+    'SELECT id, owner_email, title, checkpoints, created_at FROM user_service.itineraries WHERE id = $1 AND owner_email = $2',
+    [id, email]
+  );
+  return result.rows[0] || null;
+}
+function publicItinerary(row) {
+  return {
+    id: row.id, title: row.title, checkpoints: row.checkpoints || [],
+    createdAt: row.created_at
+  };
+}
+
+app.post('/itineraries', requireAuth, ah(async (req, res) => {
+  const { title } = req.body;
+  if (!title || !title.trim()) return res.status(400).json({ message: 'title is required' });
+  const result = await pool.query(
+    'INSERT INTO user_service.itineraries (owner_email, title) VALUES ($1, $2) RETURNING id, owner_email, title, checkpoints, created_at',
+    [req.authUser.email, title.trim()]
+  );
+  res.json(publicItinerary(result.rows[0]));
+}));
+
+app.get('/itineraries', requireAuth, ah(async (req, res) => {
+  const result = await pool.query(
+    'SELECT id, owner_email, title, checkpoints, created_at FROM user_service.itineraries WHERE owner_email = $1 ORDER BY created_at DESC',
+    [req.authUser.email]
+  );
+  res.json(result.rows.map(publicItinerary));
+}));
+
+app.get('/itineraries/:id', requireAuth, ah(async (req, res) => {
+  const it = await loadOwnedItinerary(req.params.id, req.authUser.email);
+  if (!it) return res.status(404).json({ message: 'Not found' });
+  res.json(publicItinerary(it));
+}));
+
+app.delete('/itineraries/:id', requireAuth, ah(async (req, res) => {
+  const result = await pool.query(
+    'DELETE FROM user_service.itineraries WHERE id = $1 AND owner_email = $2',
+    [req.params.id, req.authUser.email]
+  );
+  if (result.rowCount === 0) return res.status(404).json({ message: 'Not found' });
+  res.json({ message: 'Deleted' });
+}));
+
+// Add a checkpoint (a place, in order) to the end of the itinerary. Row-locked
+// like /favorites and /visited so two concurrent adds to the SAME itinerary
+// can't silently drop one of them.
+app.post('/itineraries/:id/checkpoints', requireAuth, ah(async (req, res) => {
+  const { placeId, notes } = req.body;
+  if (placeId === undefined) return res.status(400).json({ message: 'placeId is required' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      'SELECT checkpoints FROM user_service.itineraries WHERE id = $1 AND owner_email = $2 FOR UPDATE',
+      [req.params.id, req.authUser.email]
+    );
+    if (!result.rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Not found' }); }
+    const checkpoints = [...(result.rows[0].checkpoints || []), { placeId, notes: notes || '' }];
+    await client.query('UPDATE user_service.itineraries SET checkpoints = $1 WHERE id = $2', [JSON.stringify(checkpoints), req.params.id]);
+    await client.query('COMMIT');
+    res.json({ checkpoints });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}));
+
+// Remove a checkpoint by its position in the stop order.
+app.delete('/itineraries/:id/checkpoints/:index', requireAuth, ah(async (req, res) => {
+  const index = parseInt(req.params.index, 10);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      'SELECT checkpoints FROM user_service.itineraries WHERE id = $1 AND owner_email = $2 FOR UPDATE',
+      [req.params.id, req.authUser.email]
+    );
+    if (!result.rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Not found' }); }
+    const checkpoints = (result.rows[0].checkpoints || []).filter((_, i) => i !== index);
+    await client.query('UPDATE user_service.itineraries SET checkpoints = $1 WHERE id = $2', [JSON.stringify(checkpoints), req.params.id]);
+    await client.query('COMMIT');
+    res.json({ checkpoints });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}));
+
+// Swap two checkpoints' positions in the stop order - the "can we swap and
+// update checkpoints" requirement, done as an explicit, named operation
+// rather than just "replace the whole list and hope it's still valid".
+app.put('/itineraries/:id/checkpoints/swap', requireAuth, ah(async (req, res) => {
+  const { from, to } = req.body;
+  if (typeof from !== 'number' || typeof to !== 'number') {
+    return res.status(400).json({ message: 'from and to (checkpoint indexes) are required' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      'SELECT checkpoints FROM user_service.itineraries WHERE id = $1 AND owner_email = $2 FOR UPDATE',
+      [req.params.id, req.authUser.email]
+    );
+    if (!result.rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Not found' }); }
+    const checkpoints = [...(result.rows[0].checkpoints || [])];
+    if (!checkpoints[from] || !checkpoints[to]) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: 'from/to must be valid checkpoint indexes' });
+    }
+    [checkpoints[from], checkpoints[to]] = [checkpoints[to], checkpoints[from]];
+    await client.query('UPDATE user_service.itineraries SET checkpoints = $1 WHERE id = $2', [JSON.stringify(checkpoints), req.params.id]);
+    await client.query('COMMIT');
+    res.json({ checkpoints });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }));
 
 app.get('/metrics', ah(async (req, res) => {

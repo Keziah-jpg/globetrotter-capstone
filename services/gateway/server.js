@@ -39,6 +39,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'gateway' }))
 app.use('/users', createProxyMiddleware({ target: USER_SERVICE_URL, changeOrigin: true }));
 app.use('/login', createProxyMiddleware({ target: USER_SERVICE_URL, changeOrigin: true }));
 app.use('/favorites', createProxyMiddleware({ target: USER_SERVICE_URL, changeOrigin: true }));
+app.use('/itineraries', createProxyMiddleware({ target: USER_SERVICE_URL, changeOrigin: true }));
 app.use('/visited', createProxyMiddleware({ target: USER_SERVICE_URL, changeOrigin: true }));
 app.use('/services', createProxyMiddleware({ target: PLACES_SERVICE_URL, changeOrigin: true }));
 app.use('/geofence', createProxyMiddleware({ target: PLACES_SERVICE_URL, changeOrigin: true }));
