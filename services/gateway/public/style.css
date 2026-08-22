@@ -204,6 +204,14 @@ main.app-main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 .card.place-card[data-type="recreation"] { border-left-color: var(--recreation); }
 .card.place-card[data-type="bank"] { border-left-color: var(--bank); }
 .card-photo { display: block; width: 100%; height: 155px; object-fit: cover; background: var(--bg); }
+
+/* Shown instead of a photo wherever a place has no verified real image - a
+   deliberate on-brand fallback (category colour + icon), never a blank gap. */
+.img-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.92); font-size: 2.1rem;
+}
+.popup-photo.img-placeholder, .hover-preview-photo.img-placeholder { font-size: 1.5rem; }
 .card.place-card h3 { font-family: var(--font-display); font-weight: 600; }
 
 .badge-type { text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; border-radius: 6px; }
@@ -295,7 +303,7 @@ main.app-main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 #mapContainer { width: 100%; height: min(70vh, 620px); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
 .leaflet-popup-content-wrapper { padding: 0; border-radius: 12px; overflow: hidden; font-family: var(--font-body); box-shadow: var(--shadow-md); }
 .leaflet-popup-content { margin: 0; width: 220px !important; }
-.map-popup img { width: 100%; height: 110px; object-fit: cover; display: block; }
+.popup-photo { width: 100%; height: 110px; object-fit: cover; display: block; }
 .map-popup .body { padding: 0.7rem 0.85rem; }
 .map-popup h4 { font-family: var(--font-display); font-size: 0.98rem; margin: 0 0 0.3rem; }
 .map-popup p { font-size: 0.78rem; color: var(--slate); margin: 0.15rem 0; }
@@ -314,11 +322,7 @@ main.app-main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
   width: 140px; border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-md);
   background: #fff; border: 1px solid var(--border); animation: fadeIn 0.15s ease both;
 }
-.hover-preview img { width: 100%; height: 90px; object-fit: cover; display: block; }
-.hover-preview-noimg {
-  width: 100%; height: 90px; display: flex; align-items: center; justify-content: center;
-  background: var(--bg); color: var(--slate-light); font-size: 1.3rem;
-}
+.hover-preview-photo { width: 100%; height: 90px; object-fit: cover; display: block; }
 .hover-preview-name {
   font-family: var(--font-display); font-size: 0.78rem; font-weight: 600;
   padding: 0.4rem 0.55rem; color: var(--ink); line-height: 1.25;

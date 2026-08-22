@@ -13,6 +13,32 @@ const TYPE_META = {
   bank: { icon: 'fa-building-columns', label: 'Bank' }
 };
 
+// Single source of truth for category colour, shared with map.js (its
+// typeColor() reads from this) so every surface - cards, hero, map pins,
+// popups - agrees on one colour per type.
+const TYPE_COLOR = {
+  hospital: '#b91c1c', clinic: '#b45309', pharmacy: '#0f766e', market: '#a16207',
+  police: '#1d4ed8', church: '#6d28d9', hotel: '#be185d', restaurant: '#c2410c',
+  fuel: '#065f46', recreation: '#0891b2', bank: '#0d9488'
+};
+
+// A handful of real Nyom places don't have a verified real photo (checked
+// thoroughly - see README "Known limitations"), and using an unrelated
+// business's photo would misrepresent them, which is worse than no photo.
+// This is the honest alternative to a blank/broken card: a clean, on-brand
+// placeholder built from the same category icon and colour used everywhere
+// else, so every card looks equally finished instead of some looking broken.
+function placeholderImageHtml(type, className) {
+  const meta = TYPE_META[type] || { icon: 'fa-map-pin', label: type };
+  const color = TYPE_COLOR[type] || '#0b2545';
+  return `<div class="${className} img-placeholder" style="background:${color}"><i class="fa-solid ${meta.icon}"></i></div>`;
+}
+function placeImageHtml(place, className) {
+  if (!place.image) return placeholderImageHtml(place.type, className);
+  const fallback = placeholderImageHtml(place.type, className).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return `<img class="${className}" src="${place.image}" alt="${place.name}" loading="lazy" onerror="this.outerHTML='${fallback}'">`;
+}
+
 function currentUser() {
   try { return JSON.parse(localStorage.getItem('user') || 'null'); }
   catch (e) { return null; }
@@ -64,9 +90,7 @@ function renderServiceCard(s) {
         <button class="btn btn-sm btn-outline-secondary" onclick="editService(${s.id})"><i class="fa-solid fa-pen"></i> Edit</button>
         <button class="btn btn-sm btn-outline-danger" onclick="deleteService(${s.id})"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
 
-  const photo = s.image
-    ? `<img class="card-photo" src="${s.image}" alt="${s.name}" loading="lazy" onerror="this.style.display='none'">`
-    : '';
+  const photo = placeImageHtml(s, 'card-photo');
 
   return `
     <div class="card place-card fade-in" data-type="${s.type}">

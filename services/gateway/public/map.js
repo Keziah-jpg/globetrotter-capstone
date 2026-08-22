@@ -10,12 +10,10 @@ let voiceOn = false;
 let lastUserPos = null;
 let directionsProfile = 'walking';
 
+// TYPE_COLOR is defined once in app.js (loaded before this file) so cards,
+// hero, pins and popups all agree on one colour per category.
 function typeColor(type) {
-  return {
-    hospital: '#b91c1c', clinic: '#b45309', pharmacy: '#0f766e', market: '#a16207',
-    police: '#1d4ed8', church: '#6d28d9', hotel: '#be185d', restaurant: '#c2410c',
-    fuel: '#065f46', recreation: '#0891b2', bank: '#0d9488'
-  }[type] || '#0b2545';
+  return TYPE_COLOR[type] || '#0b2545';
 }
 
 function dotIcon(type) {
@@ -28,7 +26,7 @@ function dotIcon(type) {
 }
 
 function buildPopupHtml(place) {
-  const photo = place.image ? `<img src="${place.image}" alt="${place.name}" onerror="this.style.display='none'">` : '';
+  const photo = placeImageHtml(place, 'popup-photo');
   return `
     <div class="map-popup">
       ${photo}
@@ -56,9 +54,7 @@ function buildPopupHtml(place) {
 // tooltips only show one thing at a time per marker, and we already use one for the
 // permanent name label, so this is a second, non-permanent tooltip bound the same way.
 function buildHoverPreviewHtml(place) {
-  const photo = place.image
-    ? `<img src="${place.image}" alt="${place.name}" onerror="this.style.display='none'">`
-    : `<div class="hover-preview-noimg"><i class="fa-solid fa-image"></i></div>`;
+  const photo = placeImageHtml(place, 'hover-preview-photo');
   return `<div class="hover-preview">${photo}<div class="hover-preview-name">${place.name}</div></div>`;
 }
 

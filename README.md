@@ -129,7 +129,7 @@ so it's checkable line by line rather than taken on faith.
 | Decompose the monolith into independent microservices | `src/` (Phase 1 monolith) split into `services/user-service`, `services/places-service`, `services/recommendation-service`, `services/gateway` — plus `services/assistant-service` as a bonus 4th service |
 | Service decomposition, inter-service communication, API design | Each service owns one REST resource family and one Postgres schema; see the routing table below and the `USER_SERVICE_URL` / `PLACES_SERVICE_URL` env vars each service calls |
 | **User Service** — manages registration, login, profiles, owns "users" data | `services/user-service` — owns the `user_service` Postgres schema exclusively; no other service queries it directly |
-| **Itinerary Service** — owns core domain data | Renamed to **Places Service** for this domain (there's no "itinerary" concept in a places-locator app) — `services/places-service` owns the `places_service` Postgres schema exclusively |
+| **Itinerary Service** — owns core domain data | Split across two things: `services/places-service` owns the domain data itself (the `places_service` schema), and actual trip-planning - creating an itinerary, adding stops as ordered checkpoints, swapping/reordering them - lives in `services/user-service` (the `user_service.itineraries` table). Added once grading criteria explicitly asked for an itinerary-planning demo; see `POST/GET /itineraries`, `POST /itineraries/:id/checkpoints`, `PUT /itineraries/:id/checkpoints/swap` below. Placed in User Service rather than split into a fifth service as a time-boxed call, not a design ideal - a dedicated Itinerary Service is the natural next step. |
 | **Recommendation Service** — reads from User + Itinerary services | `services/recommendation-service` — holds no data at all; every request calls Places Service (popular feed) and, when logged in, User Service (preferences) live over HTTP |
 | **API Gateway** — single entry point, routes to the right service | `services/gateway` — the only container with a published port (3000); every other service is unreachable from outside the Docker network |
 
@@ -280,12 +280,14 @@ Open **http://localhost:3000**. (Ollama from Step 1 is still required for the as
 | Variable | Used by | Purpose |
 |---|---|---|
 | `DATABASE_URL` | user-service, places-service, assistant-service | Postgres connection string. Defaults to `postgresql://nyom:nyom_dev_password@localhost:5432/nyom`, matching the `postgres` service in `docker-compose.yml`. |
-| `OLLAMA_MODEL` | assistant-service | Which local model to ask Ollama for. Defaults to `llama3.2:1b`. Optional - set to `llama3` or anything else you've pulled for better quality. |
+| `OLLAMA_MODEL` | assistant-service | Which local model to ask Ollama for, when no `GROQ_API_KEY` is set. Defaults to `llama3.2:1b`. Optional - set to `llama3` or anything else you've pulled for better quality. |
 | `OLLAMA_URL` | assistant-service | Where to reach Ollama. Defaults to `http://host.docker.internal:11434` in Docker Compose (reaches Ollama on your host machine), `http://localhost:11434` for local dev. |
+| `GROQ_API_KEY` | assistant-service | Optional. If set, the assistant uses [Groq](https://console.groq.com) (free, no card required, very fast) instead of Ollama - this is what powers the assistant on the Render deployment, since Ollama can't run there. Unset by default; local dev keeps using Ollama with no code changes needed. |
+| `GROQ_MODEL` | assistant-service | Which Groq model to ask. Defaults to `llama-3.3-70b-versatile` (1,000 free requests/day) if unset. |
 | `*_SERVICE_URL` | gateway, recommendation-service, places-service, assistant-service | Where to reach each other service. Pre-wired for both Docker Compose (service names) and local dev (`localhost:<port>`). |
 
 No `.env` file is required to run this project - `.env.example` exists only if you want to override
-`OLLAMA_MODEL`.
+`OLLAMA_MODEL` or opt into Groq locally.
 
 ### Deploying to Render (free, publicly reachable)
 
@@ -301,14 +303,19 @@ each service's public HTTPS URL rather than Render's private network - see the c
 plus the database automatically. No manual per-service setup needed.
 
 **What works immediately**: the map, places directory, search, accounts, favorites, visited
-tracking, reviews, share, directions and the Yango booking button - all fully free, all through the
-gateway's public URL, and all backed by real Postgres so it correctly handles concurrent users (not
-just a single-user demo).
+tracking, itineraries, reviews, share, directions and the Yango booking button - all fully free, all
+through the gateway's public URL, and all backed by real Postgres so it correctly handles concurrent
+users (not just a single-user demo).
+
+**The AI assistant needs one manual step**: Ollama can't run on a free Render instance (not enough
+RAM/disk), so `assistant-service` is wired to use [Groq](https://console.groq.com) instead when
+deployed - free, no card required, and genuinely fast. Sign up, generate a free API key, then in the
+Render dashboard open the `nyom-assistant-service` → **Environment** tab and set `GROQ_API_KEY` to
+that value (this is deliberately *not* stored in `render.yaml`/git - see the comment there). Without
+it, `/assistant/ask` returns a clear `503` instead of crashing; everything else on the site is
+unaffected either way.
 
 **Honest limitations of the free tier** (not hidden):
-- **No AI assistant.** Ollama needs more RAM/disk than a free Render instance provides, so it isn't
-  deployed. `/assistant/ask` returns the same graceful `503 "not reachable"` it already returns
-  locally whenever Ollama isn't running - nothing crashes, the rest of the site is unaffected.
 - **The free Postgres database expires.** Render deletes free Postgres instances 30 days after
   creation (with a 14-day grace period to upgrade before that happens) and caps storage at 1GB.
   Fine for a class project's timeline; not something to build on indefinitely without upgrading.
@@ -363,13 +370,19 @@ under Architecture for why that matters).
   key) from wherever the user currently is, anywhere in Yaoundé; each step can be read aloud (Web
   Speech API), and the app auto-advances to (and speaks) the next turn as your live position gets
   close to it.
-- **AI assistant, backed by a free local LLM (Ollama, llama3.2:1b by default)** — grounded in real place data: the
-  assistant retrieves matching places from Places Service itself (a small deterministic step) and
-  gives that data to the model as context, so it can't invent a place that isn't in the directory.
-  Assistant replies that mention a place include a tap-through chip that jumps straight to that
-  place on the map with directions pre-loaded.
+- **AI assistant, free either way it's running** — Ollama (local, `llama3.2:1b` by default) for local
+  dev/Docker Compose, or [Groq](https://console.groq.com) (free tier, no card, very fast) on the
+  Render deployment, where Ollama can't run - same grounding either way: the assistant retrieves
+  matching places from Places Service itself (a small deterministic step) and gives that data to the
+  model as context, so it can't invent a place that isn't in the directory. Assistant replies that
+  mention a place include a tap-through chip that jumps straight to that place on the map with
+  directions pre-loaded.
 - **Chat history** — logged-in users' conversations with the assistant are persisted per-user and
   reloaded on their next visit.
+- **Itinerary planning** — create a named trip, add places as ordered checkpoints, and reorder/swap
+  any two stops (`POST /itineraries`, `POST /itineraries/:id/checkpoints`,
+  `PUT /itineraries/:id/checkpoints/swap`) - a real "plan a visit to Nyom" flow with its own data, not
+  just a list of favorites.
 - **Real share & save** — Share uses the Web Share API to open the device's native share sheet
   (WhatsApp, SMS, email...) with a real deep link to the place, falling back to a copied link on
   desktop browsers that don't support it. Save persists to the logged-in user's account server-side
@@ -397,12 +410,16 @@ under Architecture for why that matters).
 - **Banks**: the two fictional entries were removed; **CCA (Crédit Communautaire d'Afrique)** is
   back as a real, OSM-verified branch about 0.5km into Nyom I, alongside the real recreation
   (Yaoundé Club) added at the same time.
-- **Some photos are missing, honestly**: Wikimedia Commons (the only image source I can verify
-  licensing and authenticity for) simply has no photos of Melrose Place Hôtel, Hôtel Tehasselois,
-  Neptune Oil Nyom, Yaoundé Club or the CCA branch specifically — I searched multiple rounds of
-  terms and confirmed there's nothing to find, rather than substitute an unrelated stock photo that
-  would misrepresent the actual place. Total Okolo does have a photo because it's the same
-  TotalEnergies chain/branding, honestly captioned as representative rather than the exact pump.
+- **5 places have no verified real photo, and show a designed placeholder instead of one**: Wikimedia
+  Commons (the only image source with licensing/authenticity I can verify) has no photos of Melrose
+  Place Hôtel, Hôtel Tehasselois, Neptune Oil Nyom, Yaoundé Club or the CCA branch specifically -
+  checked both by keyword search and by geosearching Commons for anything photographed within 10km
+  of Nyom (one irrelevant result). Rather than substitute an unrelated business's photo - which would
+  misrepresent the actual place, worse than no photo - these show a clean fallback built from the
+  same category icon/colour used everywhere else in the app (`placeholderImageHtml()` in `app.js`),
+  so every card looks equally finished instead of some looking broken. Total Okolo is the one
+  exception with a "representative" (not exact) photo, because it's honestly the same TotalEnergies
+  chain/branding, not a different, unrelated business.
 - **Reviews are seeded, not user-submitted**: each place ships with 2 reviews from
   fictional-but-realistic Cameroonian names as placeholder content, exactly as requested for
   pre-launch testing. There's no review-submission form yet - that would be the natural next feature
@@ -432,13 +449,18 @@ under Architecture for why that matters).
 | GET | `/services`, `/services/search`, `/services/:id` | places-service | No |
 | POST/PUT/DELETE | `/services`, `/services/:id`, `/services/share` | places-service | Yes (`x-user-email`, verified against user-service) |
 | GET | `/geofence` | places-service | No |
+| GET | `/nearby` | places-service (proxies Overpass/OpenStreetMap server-side) | No |
 | GET | `/recommendations` | recommendation-service | No (personalised if `x-user-email` sent) |
 | POST | `/assistant/ask` | assistant-service | Optional (history only persists if logged in) |
 | GET | `/assistant/history` | assistant-service | Yes |
 | GET | `/metrics` | gateway (aggregates user-service + places-service) | No |
-| GET | `/api/config` | gateway | No |
 | POST/GET | `/favorites` | user-service | Yes (`x-user-email`) |
 | POST/GET | `/visited` | user-service | Yes (`x-user-email`) |
+| POST/GET | `/itineraries` | user-service | Yes (`x-user-email`) |
+| GET/DELETE | `/itineraries/:id` | user-service | Yes, must be the owner |
+| POST | `/itineraries/:id/checkpoints` | user-service | Yes, must be the owner |
+| DELETE | `/itineraries/:id/checkpoints/:index` | user-service | Yes, must be the owner |
+| PUT | `/itineraries/:id/checkpoints/swap` | user-service | Yes, must be the owner |
 
 ---
 

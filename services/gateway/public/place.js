@@ -26,9 +26,14 @@ function renderPlace(p) {
     ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
     : p.rating;
 
+  // Real photo when we have one verified; otherwise a gradient in this
+  // place's own category colour (not a generic navy fallback) so the "no
+  // photo" state still looks like a deliberate, on-brand design rather than
+  // something broken - same principle as the placeholder cards elsewhere.
+  const categoryColor = TYPE_COLOR[p.type] || '#0b2545';
   const heroStyle = p.image
     ? `background-image:linear-gradient(180deg, rgba(11,37,69,0.15), rgba(11,37,69,0.85)), url('${p.image}')`
-    : `background-image:linear-gradient(135deg, var(--navy), var(--accent))`;
+    : `background-image:linear-gradient(135deg, ${categoryColor}, var(--navy))`;
 
   document.title = `${p.name} - Nyom Locator`;
 
