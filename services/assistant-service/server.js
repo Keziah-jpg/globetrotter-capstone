@@ -34,12 +34,16 @@ const ah = fn => (req, res, next) => fn(req, res, next).catch(next);
 // this is exactly the endpoint Render's own health check polls to decide if the
 // container is ready to receive traffic, so it must never hang.
 app.get('/health', async (req, res) => {
+  if (process.env.GROQ_API_KEY) {
+    res.json({ status: 'ok', service: 'assistant-service', provider: 'groq', model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile' });
+    return;
+  }
   let ollamaReachable = false;
   try {
     const r = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(2000) });
     ollamaReachable = r.ok;
   } catch { /* not reachable */ }
-  res.json({ status: 'ok', service: 'assistant-service', model: OLLAMA_MODEL, ollamaReachable });
+  res.json({ status: 'ok', service: 'assistant-service', provider: 'ollama', model: OLLAMA_MODEL, ollamaReachable });
 });
 
 // Chat history is an append-only log, so unlike user-service's favorites/visited
@@ -179,6 +183,38 @@ async function askOllama(message, context) {
   return data.message?.content?.trim() || '';
 }
 
+// Groq: a free (no card required), extremely fast hosted inference API - used
+// wherever GROQ_API_KEY is set (e.g. the Render deployment, which can't run
+// Ollama itself - see README). Local dev with no GROQ_API_KEY keeps using
+// Ollama exactly as before; nothing changes there. OpenAI-compatible request
+// shape, so this is a genuinely different provider, not a proxy for Ollama.
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+
+async function askGroq(message, context) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `REAL DATA from Nyom Locator:\n${context}\n\nQuestion: ${message}` }
+      ]
+    })
+  });
+  if (!res.ok) throw new Error(`Groq returned ${res.status}`);
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
+function askLLM(message, context) {
+  return GROQ_API_KEY ? askGroq(message, context) : askOllama(message, context);
+}
+
 // POST /assistant/ask { message, lat?, lng? } - x-user-email header optional
 // (chat history is only persisted when the caller is logged in)
 app.post('/ask', ah(async (req, res) => {
@@ -191,11 +227,12 @@ app.post('/ask', ah(async (req, res) => {
     const context = placesToContext(places);
     let replyText;
     try {
-      replyText = await askOllama(message, context);
+      replyText = await askLLM(message, context);
     } catch (err) {
-      return res.status(503).json({
-        message: `AI assistant is not reachable. Make sure Ollama is installed and running on your machine (ollama serve) with the ${OLLAMA_MODEL} model pulled - see README for setup.`
-      });
+      const message = GROQ_API_KEY
+        ? 'AI assistant request to Groq failed. Check GROQ_API_KEY is valid and hasn\'t hit its free-tier rate limit.'
+        : `AI assistant is not reachable. Make sure Ollama is installed and running on your machine (ollama serve) with the ${OLLAMA_MODEL} model pulled - see README for setup.`;
+      return res.status(503).json({ message });
     }
 
     const reply = { reply: replyText || "I couldn't find anything for that - try rephrasing.", places };

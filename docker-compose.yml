@@ -76,6 +76,10 @@ services:
       - USER_SERVICE_URL=http://user-service:4001
       - OLLAMA_URL=http://host.docker.internal:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:1b}
+      # Optional - set GROQ_API_KEY in your .env to use Groq instead of Ollama
+      # even locally. Unset by default, so local dev keeps using Ollama.
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
       - DATABASE_URL=postgresql://nyom:nyom_dev_password@postgres:5432/nyom
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -89,10 +89,16 @@ services:
         fromDatabase:
           name: nyom-db
           property: connectionString
-      # No OLLAMA_URL on purpose - nothing free to point it at from Render. The
-      # service already degrades gracefully (503 with a clear message) when
-      # Ollama isn't reachable, so this is left unset rather than pointed at
-      # something that doesn't exist.
+      # No OLLAMA_URL on purpose - nothing free to point it at from Render.
+      # GROQ_API_KEY below is what actually powers the assistant here instead -
+      # free, no card required, and fast. sync: false means Render prompts for
+      # the value in its dashboard rather than reading it from this file, so
+      # the real key is never committed to git. Get one free at console.groq.com
+      # and paste it into this service's Environment tab on Render.
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
 
   - name: nyom-gateway
     type: web
