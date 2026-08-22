@@ -78,44 +78,40 @@ async function loadMyFavoritesCache() {
   } catch (e) { /* user-service unreachable */ }
 }
 
+// Compact, product-grid style card (a lot more places visible at once, one
+// glance per card instead of a long stack of detail lines) - full address,
+// phone, hours, languages and services list live on the detail page only now.
 function renderServiceCard(s) {
   const meta = TYPE_META[s.type] || { icon: 'fa-map-pin', label: s.type };
   const open = isOpenNow(s.hours);
   const distance = (s.distanceKm !== undefined && s.distanceKm !== null)
-    ? `<span class="distance-chip"><i class="fa-solid fa-route"></i> ${s.distanceKm} km</span>`
+    ? `<span class="distance-chip"><i class="fa-solid fa-route"></i> ${s.distanceKm}km</span>`
     : '';
   const user = currentUser();
   const saved = myFavoritesCache.includes(s.id);
   const ownerActions = user ? `
-        <button class="btn btn-sm btn-outline-secondary" onclick="editService(${s.id})"><i class="fa-solid fa-pen"></i> Edit</button>
-        <button class="btn btn-sm btn-outline-danger" onclick="deleteService(${s.id})"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
+        <button class="icon-btn" title="Edit" aria-label="Edit ${s.name}" onclick="editService(${s.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="icon-btn danger" title="Delete" aria-label="Delete ${s.name}" onclick="deleteService(${s.id})"><i class="fa-solid fa-trash"></i></button>` : '';
 
   const photo = placeImageHtml(s, 'card-photo');
 
   return `
     <div class="card place-card fade-in" data-type="${s.type}">
-      ${photo}
+      <div class="card-photo-wrap">
+        ${photo}
+        <span class="badge badge-type card-type-badge" data-type="${s.type}"><i class="fa-solid ${meta.icon}"></i> ${meta.label}</span>
+        <span class="status-chip card-status-chip ${open ? 'open' : 'closed'}">${open ? 'Open' : 'Closed'}</span>
+      </div>
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-1">
-          <span class="badge badge-type" data-type="${s.type}"><i class="fa-solid ${meta.icon}"></i> ${meta.label}</span>
-          <span>
-            <span class="status-chip ${open ? 'open' : 'closed'}">${open ? 'Open now' : 'Closed'}</span>
-            ${distance}
-          </span>
-        </div>
-        <h3 class="h6 fw-bold">${s.name}</h3>
-        ${starsHtml(s.rating)}
-        <p class="small mb-1"><i class="fa-solid fa-location-dot"></i> ${s.address}</p>
-        <p class="small mb-1"><i class="fa-solid fa-phone"></i> ${s.contact}</p>
-        <p class="small mb-1"><i class="fa-regular fa-clock"></i> ${s.hours.open} - ${s.hours.close}</p>
-        <p class="small mb-1"><i class="fa-solid fa-language"></i> ${(s.languages || []).join(', ')}</p>
-        <p class="small mb-2"><i class="fa-solid fa-tags"></i> ${(s.services || []).join(', ')}</p>
-        <div class="d-flex flex-wrap gap-2">
-          <a href="place.html?id=${s.id}" class="btn btn-sm btn-app-clay"><i class="fa-solid fa-circle-info"></i> Details</a>
-          <a href="map.html?place=${s.id}" class="btn btn-sm btn-app"><i class="fa-solid fa-map"></i> Map</a>
-          <a href="${yangoBookingUrl(s.lat, s.lng)}" target="_blank" rel="noopener" class="btn btn-sm" style="background:#ff2b04;color:#fff;"><i class="fa-solid fa-car-side"></i> Ride</a>
-          <button class="btn btn-sm btn-outline-secondary" data-name="${s.name}" onclick="shareService(${s.id}, this)"><i class="fa-solid fa-share"></i> Share</button>
-          <button class="btn btn-sm ${saved ? 'btn-app-accent' : 'btn-outline-secondary'}" onclick="saveFavorite(${s.id}, this)"><i class="fa-${saved ? 'solid' : 'regular'} fa-heart"></i> ${saved ? 'Saved' : 'Save'}</button>
+        <h3 class="card-title">${s.name}</h3>
+        <div class="card-meta-row">${starsHtml(s.rating)}${distance}</div>
+        <p class="card-address"><i class="fa-solid fa-location-dot"></i> ${s.address}</p>
+        <div class="card-actions-row">
+          <a href="place.html?id=${s.id}" class="icon-btn primary" title="Details" aria-label="View details for ${s.name}"><i class="fa-solid fa-circle-info"></i></a>
+          <a href="map.html?place=${s.id}" class="icon-btn" title="Map" aria-label="View ${s.name} on the map"><i class="fa-solid fa-map"></i></a>
+          <a href="${yangoBookingUrl(s.lat, s.lng)}" target="_blank" rel="noopener" class="icon-btn yango" title="Book a ride" aria-label="Book a ride to ${s.name} with Yango"><i class="fa-solid fa-car-side"></i></a>
+          <button class="icon-btn" data-name="${s.name}" title="Share" aria-label="Share ${s.name}" onclick="shareService(${s.id}, this)"><i class="fa-solid fa-share"></i></button>
+          <button class="icon-btn ${saved ? 'saved' : ''}" title="${saved ? 'Saved' : 'Save'}" aria-label="${saved ? 'Remove' : 'Save'} ${s.name} from favorites" onclick="saveFavorite(${s.id}, this)"><i class="fa-${saved ? 'solid' : 'regular'} fa-heart"></i></button>
           ${ownerActions}
         </div>
       </div>
@@ -408,9 +404,9 @@ async function saveFavorite(serviceId, btn) {
   const { favorites } = await res.json();
   const saved = favorites.includes(serviceId);
   if (btn) {
-    btn.innerHTML = saved ? '<i class="fa-solid fa-heart"></i> Saved' : '<i class="fa-regular fa-heart"></i> Save';
-    btn.classList.toggle('btn-app-accent', saved);
-    btn.classList.toggle('btn-outline-secondary', !saved);
+    btn.innerHTML = `<i class="fa-${saved ? 'solid' : 'regular'} fa-heart"></i>`;
+    btn.classList.toggle('saved', saved);
+    btn.title = saved ? 'Saved' : 'Save';
   }
 }
 
@@ -501,12 +497,39 @@ function startLiveLocation() {
   );
 }
 
+// Category filter as a scrollable chip row (tap a category, see just that
+// kind of place) instead of a dropdown buried in a row of other controls -
+// drives the same hidden #searchType select searchServices() already reads,
+// so no change needed to the actual search logic.
+function initCategoryChips() {
+  const row = document.getElementById('categoryChips');
+  const select = document.getElementById('searchType');
+  if (!row || !select) return;
+
+  const chips = [{ type: '', icon: 'fa-border-all', label: 'All' }]
+    .concat(Object.entries(TYPE_META).map(([type, meta]) => ({ type, icon: meta.icon, label: meta.label })));
+
+  row.innerHTML = chips.map(c => `
+    <button type="button" class="cat-chip ${c.type === '' ? 'active' : ''}" data-type="${c.type}">
+      <i class="fa-solid ${c.icon}"></i> ${c.label}
+    </button>`).join('');
+
+  row.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cat-chip');
+    if (!btn) return;
+    row.querySelectorAll('.cat-chip').forEach(b => b.classList.toggle('active', b === btn));
+    select.value = btn.dataset.type;
+    searchServices();
+  });
+}
+
 // Init
 document.addEventListener('DOMContentLoaded', async () => {
   updateAuthUI();
   loadStatBar();
   loadAssistantHistory();
   startLiveLocation();
+  initCategoryChips();
   await loadMyFavoritesCache();
   if (document.getElementById('servicesList')) {
     loadServices();

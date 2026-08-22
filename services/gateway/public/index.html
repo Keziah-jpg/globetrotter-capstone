@@ -54,33 +54,23 @@
       <p class="text-muted small mt-2 mb-0" id="assistantHint"></p>
     </section>
 
-    <section class="panel">
-      <h2>Find Places in Nyom</h2>
-      <div class="d-flex gap-2 flex-wrap align-items-center">
-        <input type="text" id="searchName" class="form-control" style="max-width:260px" placeholder="Search by name, type or area...">
-        <select id="searchType" class="form-select" style="max-width:180px">
-          <option value="">All Types</option>
-          <option value="hospital">Hospital</option>
-          <option value="clinic">Clinic</option>
-          <option value="pharmacy">Pharmacy</option>
-          <option value="market">Market</option>
-          <option value="police">Police Station</option>
-          <option value="church">Church</option>
-          <option value="hotel">Hotel</option>
-          <option value="restaurant">Restaurant</option>
-          <option value="fuel">Fuel Station</option>
-          <option value="recreation">Recreation</option>
-          <option value="bank">Bank</option>
-        </select>
-        <select id="searchLanguage" class="form-select" style="max-width:160px">
-          <option value="">Any Language</option>
+    <section class="panel search-panel">
+      <h2>Find places in Nyom</h2>
+      <div class="search-bar-row">
+        <div class="search-input-wrap">
+          <i class="fa-solid fa-magnifying-glass" onclick="searchServices()" role="button" aria-label="Search"></i>
+          <input type="text" id="searchName" placeholder="Search by name, type or area..." onkeydown="if(event.key==='Enter')searchServices()">
+        </div>
+        <select id="searchLanguage" class="form-select" style="max-width:150px" onchange="searchServices()">
+          <option value="">Any language</option>
           <option value="French">French</option>
           <option value="English">English</option>
           <option value="Ewondo">Ewondo</option>
         </select>
-        <button class="btn btn-app" onclick="searchServices()"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
-        <button class="btn btn-app-accent" onclick="findNearMe()"><i class="fa-solid fa-location-crosshairs"></i> Near Me</button>
+        <button class="btn btn-app-accent" onclick="findNearMe()" title="Near me"><i class="fa-solid fa-location-crosshairs"></i></button>
+        <select id="searchType" class="d-none" onchange="searchServices()"><option value="">All</option></select>
       </div>
+      <div id="categoryChips" class="cat-chip-row"></div>
     </section>
 
     <section id="results" class="card-grid"></section>

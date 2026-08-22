@@ -188,22 +188,15 @@ main.app-main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 .btn-app-clay { background: var(--clay); color: #fff; border: none; }
 .btn-app-clay:hover { background: var(--clay-dark); color: #fff; box-shadow: 0 4px 12px rgba(194,112,61,0.35); }
 
-/* Cards */
-.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
-.card.place-card { position: relative; border: 1px solid var(--border); border-left: 4px solid var(--clinic); border-radius: var(--radius); box-shadow: var(--shadow-sm); transition: box-shadow 0.2s, transform 0.2s; overflow: hidden; }
+/* Cards - a dense product-grid (many places visible at a glance, one line of
+   address, everything else one tap away on the detail page) rather than a
+   stack of detail rows per card. */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; }
+.card.place-card { position: relative; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); transition: box-shadow 0.2s, transform 0.2s; overflow: hidden; background: var(--surface); }
 .card.place-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
-.card.place-card[data-type="hospital"] { border-left-color: var(--hospital); }
-.card.place-card[data-type="clinic"] { border-left-color: var(--clinic); }
-.card.place-card[data-type="pharmacy"] { border-left-color: var(--pharmacy); }
-.card.place-card[data-type="market"] { border-left-color: var(--market); }
-.card.place-card[data-type="police"] { border-left-color: var(--police); }
-.card.place-card[data-type="church"] { border-left-color: var(--church); }
-.card.place-card[data-type="hotel"] { border-left-color: var(--hotel); }
-.card.place-card[data-type="restaurant"] { border-left-color: var(--restaurant); }
-.card.place-card[data-type="fuel"] { border-left-color: var(--fuel); }
-.card.place-card[data-type="recreation"] { border-left-color: var(--recreation); }
-.card.place-card[data-type="bank"] { border-left-color: var(--bank); }
-.card-photo { display: block; width: 100%; height: 155px; object-fit: cover; background: var(--bg); }
+
+.card-photo-wrap { position: relative; }
+.card-photo { display: block; width: 100%; height: 130px; object-fit: cover; background: var(--bg); }
 
 /* Shown instead of a photo wherever a place has no verified real image - a
    deliberate on-brand fallback (category colour + icon), never a blank gap. */
@@ -212,7 +205,39 @@ main.app-main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
   color: rgba(255,255,255,.92); font-size: 2.1rem;
 }
 .popup-photo.img-placeholder, .hover-preview-photo.img-placeholder { font-size: 1.5rem; }
-.card.place-card h3 { font-family: var(--font-display); font-weight: 600; }
+
+.card-type-badge { position: absolute; top: 0.5rem; left: 0.5rem; font-size: 0.62rem; padding: 0.22rem 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.card-status-chip { position: absolute; top: 0.5rem; right: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+
+.card-body { padding: 0.75rem 0.85rem 0.85rem; }
+.card-title {
+  font-family: var(--font-display); font-weight: 600; font-size: 0.94rem; margin: 0 0 0.3rem;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25;
+  min-height: 2.35em;
+}
+.card-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; margin-bottom: 0.35rem; }
+.card-meta-row .rating { font-size: 0.78rem; }
+.card-address {
+  font-size: 0.76rem; color: var(--slate); margin: 0 0 0.6rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-actions-row { display: flex; align-items: center; gap: 0.35rem; }
+
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--bg); color: var(--slate); border: 1px solid var(--border);
+  font-size: 0.82rem; transition: background 0.15s, color 0.15s, transform 0.1s;
+  flex-shrink: 0;
+}
+.icon-btn:hover { background: var(--border); color: var(--ink); transform: translateY(-1px); }
+.icon-btn:active { transform: translateY(0); }
+.icon-btn.primary { background: var(--clay); color: #fff; border-color: var(--clay); margin-right: auto; }
+.icon-btn.primary:hover { background: var(--clay-dark); color: #fff; }
+.icon-btn.yango { color: #ff2b04; border-color: rgba(255,43,4,.3); }
+.icon-btn.yango:hover { background: #ff2b04; color: #fff; }
+.icon-btn.saved { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+.icon-btn.danger:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
 
 .badge-type { text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; border-radius: 6px; }
 .badge-type[data-type="hospital"] { background: var(--hospital) !important; }
@@ -242,6 +267,33 @@ main.app-main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 /* Inputs */
 .form-control, .form-select { border-radius: 8px; border-color: var(--border); }
 .form-control:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,118,110,0.12); }
+
+/* Search bar + category chips - a browse-by-category row (tap an icon) in
+   place of a dropdown crammed into a row of other controls. */
+.search-panel { padding-bottom: 1rem; }
+.search-bar-row { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.9rem; }
+.search-input-wrap {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 0.6rem;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 999px;
+  padding: 0.55rem 1rem;
+}
+.search-input-wrap i { color: var(--slate-light); cursor: pointer; }
+.search-input-wrap input {
+  border: none; background: transparent; outline: none; flex: 1; min-width: 0;
+  font-family: var(--font-body); font-size: 0.92rem; color: var(--ink);
+}
+.search-bar-row .btn-app-accent { border-radius: 999px; width: 42px; height: 42px; padding: 0; flex-shrink: 0; }
+.search-bar-row .form-select { border-radius: 999px; flex-shrink: 0; }
+
+.cat-chip-row { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.2rem; scrollbar-width: thin; }
+.cat-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; flex-shrink: 0;
+  padding: 0.4rem 0.85rem; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--slate); font-size: 0.82rem; font-weight: 600;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cat-chip:hover { border-color: var(--clay); color: var(--clay); }
+.cat-chip.active { background: var(--navy); border-color: var(--navy); color: #fff; }
 
 /* ---------- Login page ---------- */
 .auth-wrap { max-width: 1040px; margin: 1.5rem auto; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-lg); animation: fadeIn 0.5s ease both; }
